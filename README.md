@@ -65,22 +65,73 @@ Since Hindi is linguistically close to Nepali, for Construct B items we compare 
 - "Confidently wrong" failure mode confirmed with real examples (e.g., Fire repeatedly answering "Nepalgunj" for Nepal's capital).
 - Script-drift failure mode discovered and replicated (model generating in unrelated scripts — Telugu, Arabic — instead of the target language).
 - A distinct **generation-fidelity vs. knowledge-access** distinction surfaced for Bengali specifically (e.g., "Dhaka" spelled wrong/near-miss vs. genuinely wrong city) — flagged as a real methodological nuance requiring careful, hedged claims (partial semantic recovery ≠ proven knowledge), not yet a core research pillar.
-- Bengali/Nepali grammatical inflection (case suffixes) initially caused false-negative scoring bugs — fixed via a suffix-aware extraction tier in the scoring pipeline (see `fire-api-call/src.py`).
+- Bengali/Nepali grammatical inflection (case suffixes) initially caused false-negative scoring bugs — fixed via a suffix-aware extraction tier in the scoring pipeline (see `fire_api_call/src.py`).
 
 ## Repo layout
 
 ```
 data/
-  loader/            # HF `datasets` loaders (Belebele en/ne/bn, SQuAD 2.0, BanglaRQA, Yunika)
-  data_cleaner/       # Per-dataset cleaning scripts
-  processed/          # Cached, cleaned JSON — the datasets loaders/cleaners produce
-fire-api-call/
-  src.py              # Resampling + calibration experiment harness (Ollama-backed)
-resampling_test_results*.json   # Output of resampling experiments (per language)
+  loader/              # HF `datasets` loaders
+  data_cleaner/        # Per-dataset cleaning scripts
+  processed/           # Cached, cleaned JSON datasets
+  pilot1/
+    sample_items.json        # 250 paired English/Nepali Belebele MCQ items
+    resampling_results.json  # 7,500 no-passage MCQ trials
+    review_sample.json       # Manual QA sample with review labels and notes
+fire_api_call/
+  src.py               # Ollama-backed model call helper
+src/pilot_phase/
+  sample_items.py      # Build the 250-item paired pilot sample
+  build_mcq.py         # Format MCQ prompts without passages
+  extract_answer_mcq.py # Extract A/B/C/D answers from model output
+  resample_mcq.py      # Run 15 resamples per item per language
+  distribution.py      # Summarize accuracy, agreement, entropy, and buckets
+  review_sample.py     # Sample items from buckets for manual QA
+results/
+  resampling_test_results*.json
 ```
 
 ## Current status
 
-Phase 0 (setup) is essentially complete: base model validated and chosen, all four core datasets loaded/cleaned/cached to `data/processed/`, and the resampling/scoring pipeline built and debugged.
+Phase 0 (setup) is complete: base model validated and chosen, core datasets loaded/cleaned/cached to `data/processed/`, and the resampling/scoring pipeline built and debugged.
 
-**Next milestone:** Phase 1 pilot — run the full Construct A/B filtering protocol on a 200-300 item Belebele sample to get a real p_B estimate before scaling to the full dataset.
+Phase 1 pilot is now running on a 250-item paired English/Nepali Belebele sample with the passage stripped. Each item is asked in both languages with 15 stochastic resamples, for 7,500 total model trials.
+
+Current pilot threshold buckets from `data/pilot1/resampling_results.json`:
+
+| Bucket | Rule | Count |
+|---|---|---:|
+| DIRECT | Nepali accuracy >= 0.70 | 21 |
+| TRANSLATE | Nepali accuracy <= 0.30 and English accuracy >= 0.60 | 63 |
+| UNRESOLVED | Nepali accuracy <= 0.30 and English accuracy <= 0.30 | 91 |
+| BORDERLINE | Everything else | 75 |
+
+Overall no-passage trial accuracy in the pilot is 940/3,750 for Nepali (25.1%) and 1,678/3,750 for English (44.7%).
+
+## Phase 1 pilot workflow
+
+Run from the repository root:
+
+```bash
+python -m src.pilot_phase.sample_items
+python -m src.pilot_phase.resample_mcq
+python -m src.pilot_phase.distribution
+python -m src.pilot_phase.review_sample
+```
+
+The review step samples items from the threshold buckets into `data/pilot1/review_sample.json`. That file is meant for human QA before interpreting the bucket counts as real construct labels.
+
+## Manual review fields
+
+`review_sample.json` uses these fields:
+
+| Field | Meaning |
+|---|---|
+| `translation_valid` | The Nepali question/options are a faithful translation of the English item. |
+| `gold_valid` | The stored correct answer is supported by the original Belebele passage. |
+| `options_aligned` | English and Nepali choices line up option-by-option. |
+| `question_clear_without_passage` | The question wording is understandable, even though the passage may still be required to answer it. |
+| `likely_dataset_artifact` | The row has a likely dataset/review artifact, such as a bad translation, broken option, ambiguous answer, or questionable gold label. |
+| `review_notes` | Short explanation of the manual judgment. |
+
+Clean rows usually have all validity fields set to `true` and `likely_dataset_artifact` set to `false`. Rows with `likely_dataset_artifact: true` should be excluded, repaired, or analyzed separately before drawing conclusions about LRCal-Agent behavior.

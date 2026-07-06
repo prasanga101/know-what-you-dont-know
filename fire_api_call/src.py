@@ -377,6 +377,18 @@ def summarize(results: list[dict[str, Any]]) -> None:
             if unparseable_examples:
                 preview = unparseable_examples[:5]
                 print(f"    unparseable examples: {preview}")
+def call_ollama(model: str, temperature: float, prompt: str) -> str:
+    response = ollama.chat(
+        model=model,
+        messages=[{"role": "user", "content": prompt}],  # sent as-is, no build_prompt wrapping
+        options={
+            "temperature": temperature,
+            "top_p": 0.9,
+            "num_predict": 20,
+        },
+    )
+    raw_text = response["message"]["content"]
+    return raw_text.replace("<|END_RESPONSE|>", "").strip()
 
 
 if __name__ == "__main__":
