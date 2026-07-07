@@ -1,116 +1,209 @@
 # LRCal-Agent
 
-**Research question:** Can an LLM agent recognize when it lacks sufficient knowledge in a low-resource language, and choose an appropriate action — answer, abstain, translate, retrieve, or clarify — rather than answering confidently and wrongly?
+LRCal-Agent studies whether a low-resource-language LLM system can recognize when it should answer, translate, retrieve evidence, abstain, or escalate instead of answering confidently and incorrectly.
 
-**Core contribution:** LRCal-Agent is a lightweight, *trained* policy module (not a prompting technique) that sits on top of a base LLM and learns, from labeled trajectories, to choose the right action given a calibration signal and contextual features.
+The current project has advanced from setup into a completed Phase 1 no-passage pilot and a Phase 2 passage-retrieval experiment on parallel English/Nepali Belebele multiple-choice questions. The key finding so far is that retrieval behaves very differently by language: adding the correct passage resolves most English failures, but only a small minority of Nepali failures.
 
-## Architecture
+## Research Question
 
-Two layers:
+Can an LLM agent learn a calibrated action policy for low-resource-language QA?
 
-- **Layer 1 — Signal/Calibration.** Measures confidence via resampling: the same query is sent to the model N times (temperature > 0) and answer agreement/entropy is computed. This layer asks "does the model's confidence track its actual accuracy?" and is built on established calibration techniques (ECE, Brier score) rather than being itself novel.
-- **Layer 2 — Policy (LRCal-Agent).** A small trained MLP with two heads (confidence + action) that takes Layer 1's signal plus trajectory-level features (tool calls made, retrieval quality, translation attempted, language/resource level) and outputs a chosen action from `{answer, abstain, translate, retrieve, clarify}`. This is the novel contribution: a *trained* policy rather than a fixed threshold rule.
+The target action space is:
 
-Layer 1 always runs first and only measures; Layer 2 decides; the base agent executes the decision (e.g., actually performs the translation if that's the chosen action).
+- `ANSWER`: answer directly when the model is reliable
+- `TRANSLATE`: translate or route through a higher-resource language when the model knows the answer in English but not in Nepali
+- `RETRIEVE`: fetch missing evidence when the question is answerable only with context
+- `ABSTAIN`: decline when the answer remains unsupported or unreliable
+- `CLARIFY` / `ESCALATE`: defer when the system cannot safely classify the failure mode
 
-## Languages
+The project is not just measuring accuracy. It is building evidence for a trained policy layer that distinguishes different kinds of failure.
 
-- **English** — high-resource anchor
-- **Bengali** — primary low-resource language (has a native, validated unanswerable-question dataset: BanglaRQA)
-- **Nepali** — harder case; no native unanswerable-question resource exists, so one is constructed
-- **Hindi** — optional secondary experiment only (see below), not a core language
+## Core Idea
 
-## Core methodology — Constructs A and B
+LRCal-Agent separates the system into two layers:
 
-Belebele MCQ items (parallel across en/ne/bn, all normally answerable-with-passage) are repurposed: the passage is stripped, the bare question is resampled N=10-15 times per language, and per-language accuracy is measured.
+| Layer | Role | Status |
+|---|---|---|
+| Layer 1: Calibration signal | Resample the base model many times and measure accuracy, answer agreement, entropy, and failure patterns | Implemented for MCQ pilots |
+| Layer 2: Action policy | Learn which action should be taken from calibration and trajectory features | Research target; current phases are generating labels/evidence |
 
-- **Construct A** — near-chance accuracy in *both* English and Nepali → genuinely unanswerable without evidence, language-independent. Used as a **control/contrast**.
-- **Construct B** — near-chance in Nepali, clearly above-chance in English → a **Nepali-specific knowledge gap** (the model knows the fact, but the language shift is hiding it). This is the **primary construct** — the paper's headline result, and the only construct where "translate" is ever the correct gold action.
+The important methodological shift from the recent work is that failure is not binary. A wrong answer can come from:
 
-Gold actions are defined per *(construct, agent variant)* pair — the same Construct B item is "abstain" for a no-tool agent but "translate" for a translate-capable agent.
+- missing evidence
+- language-specific access/comprehension failure
+- corrupted or mistranslated data
+- a true unanswerable/unsupported case
+- model instability or confident wrongness
 
-## Dataset stack
+## Current Advancement Summary
 
-| Dataset | Role |
+### Phase 0: Setup and Model Validation
+
+Completed.
+
+This phase established the local model and scoring pipeline:
+
+- selected Tiny Aya Fire via Ollama as the working local multilingual model
+- confirmed English vs Nepali/Bengali performance gaps
+- observed confidently wrong answers and script-drift failures
+- built MCQ answer extraction for A/B/C/D responses
+- fixed early false-negative scoring issues caused by language/script variation
+- prepared cleaned datasets under `data/processed/`
+
+### Phase 1: No-Passage English/Nepali Pilot
+
+Completed.
+
+A 250-item paired English/Nepali Belebele sample was created. The passage was stripped, and each item was asked in both languages with 15 stochastic resamples per language.
+
+Total trials:
+
+- 250 questions
+- 2 languages: Nepali and English
+- 15 resamples per question/language
+- 7,500 no-passage trials
+
+Aggregate no-passage accuracy:
+
+| Language | Correct / Total | Accuracy |
+|---|---:|---:|
+| Nepali | 940 / 3,750 | 25.07% |
+| English | 1,678 / 3,750 | 44.75% |
+
+Threshold buckets from `data/pilot1/questions_bucket.json`:
+
+| Bucket | Rule | Count | Share |
+|---|---|---:|---:|
+| `DIRECT` | Nepali accuracy >= 0.70 | 21 | 8.4% |
+| `TRANSLATE` | Nepali <= 0.30 and English >= 0.60 | 63 | 25.2% |
+| `UNRESOLVED` | Nepali <= 0.30 and English <= 0.30 | 91 | 36.4% |
+| `BORDERLINE` | Everything else | 75 | 30.0% |
+
+The first interpretation was that `TRANSLATE` represented language-specific gaps, while `UNRESOLVED` represented likely unanswerable or missing-knowledge cases. Manual review complicated that story.
+
+### Manual Review Finding
+
+A stratified 40-item sample was reviewed from the Phase 1 buckets:
+
+- 20 `UNRESOLVED`
+- 10 `BORDERLINE`
+- 5 `TRANSLATE`
+- 5 `DIRECT`
+
+The review found that many failures were not pure knowledge gaps. In the comparison note, 27 of 40 items initially treated as answerable without the source passage were reclassified as passage-dependent after review. That shifted the hypothesis: many failures were likely evidence gaps because the passage had been removed.
+
+The review also identified dataset issues:
+
+- mistranslated distractor options
+- gold-label problems where the source text contradicted the labeled answer
+- passage/question alignment concerns
+
+These artifacts should be excluded or tracked separately before treating bucket labels as clean policy labels.
+
+### Phase 2: Passage-Retrieval Experiment
+
+Completed.
+
+The 166 questions from the `UNRESOLVED` and `BORDERLINE` buckets were re-run with the correct source passage prepended to the prompt.
+
+Total with-passage trials:
+
+- 166 questions
+- 2 languages
+- 15 resamples per question/language
+- 4,980 trials
+
+Classification rule in `src/passage_phase/compare_passage_effect.py`:
+
+| Condition | Label |
 |---|---|
-| Belebele (en/ne/bn) | Calibration/accuracy backbone + source for Construct A/B construction. Human-translated, parallel, MCQ, no unanswerable items. |
-| BanglaRQA | Native Bengali abstention data. 3,000 passages, ~14,889 QA pairs (flattened), ~24.4% unanswerable, 4 question types (factoid, confirmation, list, causal). |
-| SQuAD 2.0 | English abstention data (native, standard benchmark). |
-| Yunika/Nepali-QA | Small (266 items) supplementary Nepali accuracy check only — no unanswerable items, not usable for action-head training. |
-| SQuAD 2.0 Hindi (optional, not yet integrated) | Only used on already-identified Construct B items, for the Hindi-bridge experiment. |
+| no-passage accuracy > 0.30 | `WAS_NOT_FAILING` |
+| no-passage <= 0.30 and with-passage >= 0.60 | `RETRIEVE` |
+| no-passage <= 0.30 and with-passage <= 0.30 | `STILL_FAILS` |
+| otherwise | `PARTIAL_IMPROVEMENT` |
 
-## Optional secondary experiment: Hindi bridge
+Results from `data/passage1/retrieval_comparison.json`:
 
-Since Hindi is linguistically close to Nepali, for Construct B items we compare recovery rate when translating to Hindi vs. English. Framed precisely as *"a direct, item-level comparison of English and Hindi as recovery targets for Nepali questions"* — not as the first use of Hindi as a related language for Nepali (already done by prior work).
+| Language | RETRIEVE | STILL_FAILS | PARTIAL_IMPROVEMENT | WAS_NOT_FAILING |
+|---|---:|---:|---:|---:|
+| Nepali | 15 | 78 | 15 | 58 |
+| English | 80 | 27 | 7 | 52 |
 
-## Related work
+Among previously failing items only:
 
-**Feng et al. 2024 (EMNLP), "Teaching LLMs to Abstain across Languages via Multilingual Feedback"** (arXiv:2406.15948) is the closest prior work. It covers exactly Nepali/Bengali/Hindi and already runs experiments on Belebele. Key differentiators for LRCal-Agent:
+| Language | Previously failing | RETRIEVE | STILL_FAILS | PARTIAL_IMPROVEMENT |
+|---|---:|---:|---:|---:|
+| Nepali | 108 | 15 (13.9%) | 78 (72.2%) | 15 (13.9%) |
+| English | 114 | 80 (70.2%) | 27 (23.7%) | 7 (6.1%) |
 
-- Their abstain ground truth is pure post-hoc correctness ("would the answer be wrong"), with no distinction between *why* it's wrong. Construct A/B explicitly separates language-independent vs. language-specific gaps — theirs can't.
-- Their method (MULTI-RELATED) is prompting-only, with no training. LRCal-Agent is a trained module.
-- Their action space is binary (abstain/answer). LRCal-Agent has five explicit actions.
+## Main Research Finding So Far
 
-## Base model
+The passage experiment shows a major asymmetry:
 
-**Tiny Aya-Fire** (`hf.co/CohereLabs/tiny-aya-fire-GGUF:Q4_K_M`, via Ollama) — Cohere's 3.35B multilingual model, South-Asia-specialized variant. Chosen over Tiny Aya-Global after multiple replicated head-to-head resampling tests (Global showed severe, repeated script-drift failures — e.g., generating in Telugu when asked a Nepali question). Chosen over Aya-23 after confirming Aya-23's 23-language set does **not** include Nepali or Bengali. Runs locally on 16GB unified memory (MacBook Air M4).
+- English failures are often evidence gaps. When the correct passage is supplied, about 70% of previously failing English cases recover.
+- Nepali failures are usually not resolved by supplying the same evidence. Only about 14% of previously failing Nepali cases become clean `RETRIEVE` cases.
 
-## Translation tool
+This suggests the policy cannot treat retrieval as language-neutral. For Nepali, the model often receives the correct passage but still cannot reliably extract the answer.
 
-**IndicTrans2** (planned, not yet integrated) — chosen over the Google Translate API for being free, open, reproducible, and benchmarked specifically on Nepali/Hindi/Bengali.
+That means the action policy may need to distinguish:
 
-## Validated findings (Phase 0)
+- `RETRIEVE`: evidence missing, retrieval likely fixes the problem
+- `ABSTAIN` or `ESCALATE`: evidence present, but the model still cannot use it reliably
+- `TRANSLATE`: English recovers where Nepali does not
 
-- Massive English vs. Nepali/Bengali accuracy gap reproduced directly (English: consistently ~100%; Nepali/Bengali: highly variable, often near-chance) — the core calibration-gap phenomenon the project studies.
-- "Confidently wrong" failure mode confirmed with real examples (e.g., Fire repeatedly answering "Nepalgunj" for Nepal's capital).
-- Script-drift failure mode discovered and replicated (model generating in unrelated scripts — Telugu, Arabic — instead of the target language).
-- A distinct **generation-fidelity vs. knowledge-access** distinction surfaced for Bengali specifically (e.g., "Dhaka" spelled wrong/near-miss vs. genuinely wrong city) — flagged as a real methodological nuance requiring careful, hedged claims (partial semantic recovery ≠ proven knowledge), not yet a core research pillar.
-- Bengali/Nepali grammatical inflection (case suffixes) initially caused false-negative scoring bugs — fixed via a suffix-aware extraction tier in the scoring pipeline (see `fire_api_call/src.py`).
+## Project Layout
 
-## Repo layout
-
+```text
+LRCal-Agent/
+  README.md
+  fire_api_call/
+    src.py                         # Ollama model-call helper
+  src/
+    pilot_phase/
+      sample_items.py              # Build 250 paired EN/NE sample
+      build_mcq.py                 # Build no-passage MCQ prompt
+      extract_answer_mcq.py        # Extract A/B/C/D model answer
+      resample_mcq.py              # Run 15 no-passage resamples
+      distribution.py              # Accuracy, entropy, agreement, buckets
+      review_sample.py             # Stratified manual-review sample
+    passage_phase/
+      sample_passage_items.py      # Reattach source passages
+      filter_unresolved_items.py   # Keep UNRESOLVED/BORDERLINE items
+      build_passage_mcq.py         # Build with-passage MCQ prompt
+      answer_passage_mcq.py        # Extract with-passage answer
+      resample_unresolved_pmcq.py  # Run with-passage resamples
+      compare_passage_effect.py    # Compare no-passage vs with-passage
+    tests/
+      distribution_comparision.md  # Current experiment summary and interpretation
+  data/
+    processed/                     # Cleaned dataset caches
+    pilot1/                        # Phase 1 samples, trials, buckets, review sample
+    passage1/                      # Phase 2 passage samples and retrieval comparison
+    loader/                        # Dataset loading helpers
+    data_cleaner/                  # Dataset-specific cleaners
+  results/                         # Early resampling sanity checks
+  phases/                          # Phase diagrams
 ```
-data/
-  loader/              # HF `datasets` loaders
-  data_cleaner/        # Per-dataset cleaning scripts
-  processed/           # Cached, cleaned JSON datasets
-  pilot1/
-    sample_items.json        # 250 paired English/Nepali Belebele MCQ items
-    resampling_results.json  # 7,500 no-passage MCQ trials
-    review_sample.json       # Manual QA sample with review labels and notes
-fire_api_call/
-  src.py               # Ollama-backed model call helper
-src/pilot_phase/
-  sample_items.py      # Build the 250-item paired pilot sample
-  build_mcq.py         # Format MCQ prompts without passages
-  extract_answer_mcq.py # Extract A/B/C/D answers from model output
-  resample_mcq.py      # Run 15 resamples per item per language
-  distribution.py      # Summarize accuracy, agreement, entropy, and buckets
-  review_sample.py     # Sample items from buckets for manual QA
-results/
-  resampling_test_results*.json
-```
 
-## Current status
+## Important Data Artifacts
 
-Phase 0 (setup) is complete: base model validated and chosen, core datasets loaded/cleaned/cached to `data/processed/`, and the resampling/scoring pipeline built and debugged.
+| File | Meaning |
+|---|---|
+| `data/pilot1/sample_items.json` | 250 paired English/Nepali Belebele items |
+| `data/pilot1/resampling_results.json` | 7,500 no-passage trials |
+| `data/pilot1/questions_bucket.json` | Phase 1 threshold bucket assignment |
+| `data/pilot1/review_sample.json` | Stratified 40-item manual-review file |
+| `data/passage1/sample_passage_items.json` | Same items with source passages attached |
+| `data/passage1/unresolved_sample.json` | 166 `UNRESOLVED`/`BORDERLINE` items selected for Phase 2 |
+| `data/passage1/resampled_passage_output.json` | 4,980 with-passage trials |
+| `data/passage1/retrieval_comparison.json` | No-passage vs with-passage classification |
+| `src/tests/distribution_comparision.md` | Human-readable results summary and interpretation |
 
-Phase 1 pilot is now running on a 250-item paired English/Nepali Belebele sample with the passage stripped. Each item is asked in both languages with 15 stochastic resamples, for 7,500 total model trials.
+## Reproducing The Pipeline
 
-Current pilot threshold buckets from `data/pilot1/resampling_results.json`:
+Run commands from the repository root.
 
-| Bucket | Rule | Count |
-|---|---|---:|
-| DIRECT | Nepali accuracy >= 0.70 | 21 |
-| TRANSLATE | Nepali accuracy <= 0.30 and English accuracy >= 0.60 | 63 |
-| UNRESOLVED | Nepali accuracy <= 0.30 and English accuracy <= 0.30 | 91 |
-| BORDERLINE | Everything else | 75 |
-
-Overall no-passage trial accuracy in the pilot is 940/3,750 for Nepali (25.1%) and 1,678/3,750 for English (44.7%).
-
-## Phase 1 pilot workflow
-
-Run from the repository root:
+### Phase 1: No-Passage Pilot
 
 ```bash
 python -m src.pilot_phase.sample_items
@@ -119,19 +212,58 @@ python -m src.pilot_phase.distribution
 python -m src.pilot_phase.review_sample
 ```
 
-The review step samples items from the threshold buckets into `data/pilot1/review_sample.json`. That file is meant for human QA before interpreting the bucket counts as real construct labels.
+### Phase 2: Passage-Retrieval Experiment
 
-## Manual review fields
+```bash
+python -m src.passage_phase.sample_passage_items
+python -m src.passage_phase.filter_unresolved_items
+python -m src.passage_phase.resample_unresolved_pmcq
+python -m src.passage_phase.compare_passage_effect
+```
 
-`review_sample.json` uses these fields:
+The scripts assume Ollama is available locally and that the configured model can be called through `fire_api_call/src.py`.
 
-| Field | Meaning |
-|---|---|
-| `translation_valid` | The Nepali question/options are a faithful translation of the English item. |
-| `gold_valid` | The stored correct answer is supported by the original Belebele passage. |
-| `options_aligned` | English and Nepali choices line up option-by-option. |
-| `question_clear_without_passage` | The question wording is understandable, even though the passage may still be required to answer it. |
-| `likely_dataset_artifact` | The row has a likely dataset/review artifact, such as a bad translation, broken option, ambiguous answer, or questionable gold label. |
-| `review_notes` | Short explanation of the manual judgment. |
+Current model constant used by the resampling scripts:
 
-Clean rows usually have all validity fields set to `true` and `likely_dataset_artifact` set to `false`. Rows with `likely_dataset_artifact: true` should be excluded, repaired, or analyzed separately before drawing conclusions about LRCal-Agent behavior.
+```text
+hf.co/CohereLabs/tiny-aya-fire-GGUF:Q4_K_M
+```
+
+## Current Interpretation
+
+The project has moved from "can resampling expose low-resource unreliability?" to a sharper finding:
+
+> Evidence retrieval helps English much more than Nepali, even when both languages receive the corresponding source passage.
+
+This matters for LRCal-Agent because a policy trained only on no-passage confidence could mislabel many Nepali cases as retrieval candidates. The Phase 2 results suggest the policy needs features that capture language-conditioned retrieval efficacy, not just whether retrieval is available.
+
+## Next Steps
+
+Near-term:
+
+1. Cleanly separate dataset artifacts from genuine model failures.
+2. Expand manual verification of Nepali `STILL_FAILS` cases where English becomes `RETRIEVE`.
+3. Decide whether "retrieval attempted but still unusable" should map to `ABSTAIN`, `ESCALATE`, or a distinct policy label.
+4. Build a policy-label table from Phase 1 and Phase 2 outputs.
+5. Add Bengali and BanglaRQA abstention data back into the action-policy framing.
+
+Later:
+
+1. Integrate translation as an actual tool path.
+2. Compare English vs Hindi as recovery targets for Nepali `TRANSLATE` candidates.
+3. Train the Layer 2 policy module using calibration features, language, retrieval status, and action labels.
+4. Evaluate whether the trained policy outperforms fixed threshold rules.
+
+## Notes On Reliability
+
+The current findings are strong enough to guide the next research phase, but they are not a full dataset audit.
+
+Known caveats:
+
+- only a subset of items received manual review
+- some Nepali passages may be corrupted or misaligned
+- some gold labels and distractors have documented defects
+- MCQ letter extraction is intentionally simple and should be stress-tested before larger runs
+- current thresholds are research heuristics, not final policy boundaries
+
+These caveats are part of the research contribution: LRCal-Agent is explicitly trying to learn when model behavior is unsupported, unstable, or language-conditionally unreliable.
