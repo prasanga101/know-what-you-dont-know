@@ -1,4 +1,5 @@
 __pycache__/
 *.pyc
-processed/          
-resampling_test_results*.json
+/phases
+data/processed/*
+data/pilot1/*

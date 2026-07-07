@@ -1,0 +1,1556 @@
+[
+  {
+    "prompt_id": "nepal_capital_ne",
+    "fact_id": "nepal_capital",
+    "language": "ne",
+    "original_prompt": "नेपालको राजधानी के हो?",
+    "expected_canonical": "kathmandu",
+    "responses": [
+      {
+        "model": "hf.co/CohereLabs/tiny-aya-fire-GGUF:Q4_K_M",
+        "samples": [
+          {
+            "resample_id": 0,
+            "response": "काठमाण्डौ",
+            "extracted_answer": "kathmandu",
+            "is_correct": true,
+            "latency": 0.517246791976504,
+            "error": null
+          },
+          {
+            "resample_id": 1,
+            "response": "काठमाण्डौ",
+            "extracted_answer": "kathmandu",
+            "is_correct": true,
+            "latency": 0.246917083975859,
+            "error": null
+          },
+          {
+            "resample_id": 2,
+            "response": "काठमाण्डौ",
+            "extracted_answer": "kathmandu",
+            "is_correct": true,
+            "latency": 0.24314108304679394,
+            "error": null
+          },
+          {
+            "resample_id": 3,
+            "response": "नेपाक",
+            "extracted_answer": null,
+            "is_correct": false,
+            "latency": 0.1929364160168916,
+            "error": null
+          },
+          {
+            "resample_id": 4,
+            "response": "Kathmandu",
+            "extracted_answer": "kathmandu",
+            "is_correct": true,
+            "latency": 0.19644108298234642,
+            "error": null
+          },
+          {
+            "resample_id": 5,
+            "response": "Nepalgunj",
+            "extracted_answer": null,
+            "is_correct": false,
+            "latency": 0.22042212495580316,
+            "error": null
+          },
+          {
+            "resample_id": 6,
+            "response": "पोखरा",
+            "extracted_answer": null,
+            "is_correct": false,
+            "latency": 0.19668349996209145,
+            "error": null
+          },
+          {
+            "resample_id": 7,
+            "response": "Nepalgunj",
+            "extracted_answer": null,
+            "is_correct": false,
+            "latency": 0.21735654189251363,
+            "error": null
+          },
+          {
+            "resample_id": 8,
+            "response": "Nepalgunj",
+            "extracted_answer": null,
+            "is_correct": false,
+            "latency": 0.22573733306489885,
+            "error": null
+          },
+          {
+            "resample_id": 9,
+            "response": "काठमाण्डौ",
+            "extracted_answer": "kathmandu",
+            "is_correct": true,
+            "latency": 0.24786670901812613,
+            "error": null
+          },
+          {
+            "resample_id": 10,
+            "response": "Kathmandu",
+            "extracted_answer": "kathmandu",
+            "is_correct": true,
+            "latency": 0.19540666695684195,
+            "error": null
+          },
+          {
+            "resample_id": 11,
+            "response": "Nepalgunj",
+            "extracted_answer": null,
+            "is_correct": false,
+            "latency": 0.22121795802377164,
+            "error": null
+          },
+          {
+            "resample_id": 12,
+            "response": "Kathmandu",
+            "extracted_answer": "kathmandu",
+            "is_correct": true,
+            "latency": 0.21524499997030944,
+            "error": null
+          },
+          {
+            "resample_id": 13,
+            "response": "Kathmandu",
+            "extracted_answer": "kathmandu",
+            "is_correct": true,
+            "latency": 0.19688483304344118,
+            "error": null
+          },
+          {
+            "resample_id": 14,
+            "response": "Kathmandu",
+            "extracted_answer": "kathmandu",
+            "is_correct": true,
+            "latency": 0.22153541608713567,
+            "error": null
+          }
+        ]
+      },
+      {
+        "model": "hf.co/CohereLabs/tiny-aya-global-GGUF:Q4_K_M",
+        "samples": [
+          {
+            "resample_id": 0,
+            "response": "Nepalgunj",
+            "extracted_answer": null,
+            "is_correct": false,
+            "latency": 0.3795532078947872,
+            "error": null
+          },
+          {
+            "resample_id": 1,
+            "response": "Kathmandu",
+            "extracted_answer": "kathmandu",
+            "is_correct": true,
+            "latency": 0.19240212498698384,
+            "error": null
+          },
+          {
+            "resample_id": 2,
+            "response": "Nepalgunj",
+            "extracted_answer": null,
+            "is_correct": false,
+            "latency": 0.22133187507279217,
+            "error": null
+          },
+          {
+            "resample_id": 3,
+            "response": "Kathmandu",
+            "extracted_answer": "kathmandu",
+            "is_correct": true,
+            "latency": 0.22307362500578165,
+            "error": null
+          },
+          {
+            "resample_id": 4,
+            "response": "Nepalgunj",
+            "extracted_answer": null,
+            "is_correct": false,
+            "latency": 0.2207087919814512,
+            "error": null
+          },
+          {
+            "resample_id": 5,
+            "response": "नेपालीको राजధानी काठमाडौँ हो।",
+            "extracted_answer": "kathmandu",
+            "is_correct": true,
+            "latency": 0.38536370801739395,
+            "error": null
+          },
+          {
+            "resample_id": 6,
+            "response": "नएदाद",
+            "extracted_answer": null,
+            "is_correct": false,
+            "latency": 0.22166116698645055,
+            "error": null
+          },
+          {
+            "resample_id": 7,
+            "response": "काटμαν्डू",
+            "extracted_answer": null,
+            "is_correct": false,
+            "latency": 0.24512370896991342,
+            "error": null
+          },
+          {
+            "resample_id": 8,
+            "response": "काठमांडू",
+            "extracted_answer": "kathmandu",
+            "is_correct": true,
+            "latency": 0.2290112910559401,
+            "error": null
+          },
+          {
+            "resample_id": 9,
+            "response": "Nepalgunj",
+            "extracted_answer": null,
+            "is_correct": false,
+            "latency": 0.22126041701994836,
+            "error": null
+          },
+          {
+            "resample_id": 10,
+            "response": "KTM",
+            "extracted_answer": null,
+            "is_correct": false,
+            "latency": 0.1745207499479875,
+            "error": null
+          },
+          {
+            "resample_id": 11,
+            "response": "Nepalgunj",
+            "extracted_answer": null,
+            "is_correct": false,
+            "latency": 0.22078354097902775,
+            "error": null
+          },
+          {
+            "resample_id": 12,
+            "response": "काठmannدड",
+            "extracted_answer": null,
+            "is_correct": false,
+            "latency": 0.2757667499827221,
+            "error": null
+          },
+          {
+            "resample_id": 13,
+            "response": "Kashmir",
+            "extracted_answer": null,
+            "is_correct": false,
+            "latency": 0.1969961660215631,
+            "error": null
+          },
+          {
+            "resample_id": 14,
+            "response": "Kathmandu",
+            "extracted_answer": "kathmandu",
+            "is_correct": true,
+            "latency": 0.21786474995315075,
+            "error": null
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "prompt_id": "nepal_capital_en",
+    "fact_id": "nepal_capital",
+    "language": "en",
+    "original_prompt": "What is the capital of Nepal?",
+    "expected_canonical": "kathmandu",
+    "responses": [
+      {
+        "model": "hf.co/CohereLabs/tiny-aya-fire-GGUF:Q4_K_M",
+        "samples": [
+          {
+            "resample_id": 0,
+            "response": "Kathmandu",
+            "extracted_answer": "kathmandu",
+            "is_correct": true,
+            "latency": 0.33369770797435194,
+            "error": null
+          },
+          {
+            "resample_id": 1,
+            "response": "Kathmandu",
+            "extracted_answer": "kathmandu",
+            "is_correct": true,
+            "latency": 0.19659349997527897,
+            "error": null
+          },
+          {
+            "resample_id": 2,
+            "response": "Kathmandu",
+            "extracted_answer": "kathmandu",
+            "is_correct": true,
+            "latency": 0.196004958008416,
+            "error": null
+          },
+          {
+            "resample_id": 3,
+            "response": "Kathmandu",
+            "extracted_answer": "kathmandu",
+            "is_correct": true,
+            "latency": 0.19050508295185864,
+            "error": null
+          },
+          {
+            "resample_id": 4,
+            "response": "Kathmandu",
+            "extracted_answer": "kathmandu",
+            "is_correct": true,
+            "latency": 0.19926412496715784,
+            "error": null
+          },
+          {
+            "resample_id": 5,
+            "response": "Kathmandu",
+            "extracted_answer": "kathmandu",
+            "is_correct": true,
+            "latency": 0.1965868331026286,
+            "error": null
+          },
+          {
+            "resample_id": 6,
+            "response": "Kathmandu",
+            "extracted_answer": "kathmandu",
+            "is_correct": true,
+            "latency": 0.19775491708423942,
+            "error": null
+          },
+          {
+            "resample_id": 7,
+            "response": "Kathmandu",
+            "extracted_answer": "kathmandu",
+            "is_correct": true,
+            "latency": 0.19658999994862825,
+            "error": null
+          },
+          {
+            "resample_id": 8,
+            "response": "Kathmandu",
+            "extracted_answer": "kathmandu",
+            "is_correct": true,
+            "latency": 0.19125387503299862,
+            "error": null
+          },
+          {
+            "resample_id": 9,
+            "response": "Kathmandu",
+            "extracted_answer": "kathmandu",
+            "is_correct": true,
+            "latency": 0.19575041602365673,
+            "error": null
+          },
+          {
+            "resample_id": 10,
+            "response": "Kathmandu",
+            "extracted_answer": "kathmandu",
+            "is_correct": true,
+            "latency": 0.19655029103159904,
+            "error": null
+          },
+          {
+            "resample_id": 11,
+            "response": "Kathmandu",
+            "extracted_answer": "kathmandu",
+            "is_correct": true,
+            "latency": 0.19672162493225187,
+            "error": null
+          },
+          {
+            "resample_id": 12,
+            "response": "Kathmandu",
+            "extracted_answer": "kathmandu",
+            "is_correct": true,
+            "latency": 0.19594799994956702,
+            "error": null
+          },
+          {
+            "resample_id": 13,
+            "response": "Kathmandu",
+            "extracted_answer": "kathmandu",
+            "is_correct": true,
+            "latency": 0.19302387500647455,
+            "error": null
+          },
+          {
+            "resample_id": 14,
+            "response": "Kathmandu",
+            "extracted_answer": "kathmandu",
+            "is_correct": true,
+            "latency": 0.19409658305812627,
+            "error": null
+          }
+        ]
+      },
+      {
+        "model": "hf.co/CohereLabs/tiny-aya-global-GGUF:Q4_K_M",
+        "samples": [
+          {
+            "resample_id": 0,
+            "response": "Kathmandu",
+            "extracted_answer": "kathmandu",
+            "is_correct": true,
+            "latency": 0.3327252909075469,
+            "error": null
+          },
+          {
+            "resample_id": 1,
+            "response": "Kathmandu",
+            "extracted_answer": "kathmandu",
+            "is_correct": true,
+            "latency": 0.19702679209876806,
+            "error": null
+          },
+          {
+            "resample_id": 2,
+            "response": "Kathmandu",
+            "extracted_answer": "kathmandu",
+            "is_correct": true,
+            "latency": 0.194750374997966,
+            "error": null
+          },
+          {
+            "resample_id": 3,
+            "response": "Kathmandu",
+            "extracted_answer": "kathmandu",
+            "is_correct": true,
+            "latency": 0.1915670420276001,
+            "error": null
+          },
+          {
+            "resample_id": 4,
+            "response": "Kathmandu",
+            "extracted_answer": "kathmandu",
+            "is_correct": true,
+            "latency": 0.19809266610536724,
+            "error": null
+          },
+          {
+            "resample_id": 5,
+            "response": "Kathmandu",
+            "extracted_answer": "kathmandu",
+            "is_correct": true,
+            "latency": 0.19727208302356303,
+            "error": null
+          },
+          {
+            "resample_id": 6,
+            "response": "Kathmandu",
+            "extracted_answer": "kathmandu",
+            "is_correct": true,
+            "latency": 0.19582041609100997,
+            "error": null
+          },
+          {
+            "resample_id": 7,
+            "response": "Kathmandu",
+            "extracted_answer": "kathmandu",
+            "is_correct": true,
+            "latency": 0.19558025000151247,
+            "error": null
+          },
+          {
+            "resample_id": 8,
+            "response": "Kathmandu",
+            "extracted_answer": "kathmandu",
+            "is_correct": true,
+            "latency": 0.1917179999873042,
+            "error": null
+          },
+          {
+            "resample_id": 9,
+            "response": "Kathmandu",
+            "extracted_answer": "kathmandu",
+            "is_correct": true,
+            "latency": 0.19916529196780175,
+            "error": null
+          },
+          {
+            "resample_id": 10,
+            "response": "Kathmandu",
+            "extracted_answer": "kathmandu",
+            "is_correct": true,
+            "latency": 0.19519441598095,
+            "error": null
+          },
+          {
+            "resample_id": 11,
+            "response": "Kathmandu",
+            "extracted_answer": "kathmandu",
+            "is_correct": true,
+            "latency": 0.20224499993491918,
+            "error": null
+          },
+          {
+            "resample_id": 12,
+            "response": "Kathmandu",
+            "extracted_answer": "kathmandu",
+            "is_correct": true,
+            "latency": 0.2386020830599591,
+            "error": null
+          },
+          {
+            "resample_id": 13,
+            "response": "Kathmandu",
+            "extracted_answer": "kathmandu",
+            "is_correct": true,
+            "latency": 0.19980112498160452,
+            "error": null
+          },
+          {
+            "resample_id": 14,
+            "response": "Kathmandu",
+            "extracted_answer": "kathmandu",
+            "is_correct": true,
+            "latency": 0.2035318750422448,
+            "error": null
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "prompt_id": "nepal_capital_bn",
+    "fact_id": "nepal_capital",
+    "language": "bn",
+    "original_prompt": "নেপালের রাজধানী কী?",
+    "expected_canonical": "kathmandu",
+    "responses": [
+      {
+        "model": "hf.co/CohereLabs/tiny-aya-fire-GGUF:Q4_K_M",
+        "samples": [
+          {
+            "resample_id": 0,
+            "response": "কাঠমান্ডু",
+            "extracted_answer": "kathmandu",
+            "is_correct": true,
+            "latency": 0.4022067920304835,
+            "error": null
+          },
+          {
+            "resample_id": 1,
+            "response": "কাঠমান্ডু",
+            "extracted_answer": "kathmandu",
+            "is_correct": true,
+            "latency": 0.25249195797368884,
+            "error": null
+          },
+          {
+            "resample_id": 2,
+            "response": "কাঠমান্ডু",
+            "extracted_answer": "kathmandu",
+            "is_correct": true,
+            "latency": 0.245037333923392,
+            "error": null
+          },
+          {
+            "resample_id": 3,
+            "response": "Kathmandu",
+            "extracted_answer": "kathmandu",
+            "is_correct": true,
+            "latency": 0.22372866596560925,
+            "error": null
+          },
+          {
+            "resample_id": 4,
+            "response": "কাঠমান্ডু",
+            "extracted_answer": "kathmandu",
+            "is_correct": true,
+            "latency": 0.24724370799958706,
+            "error": null
+          },
+          {
+            "resample_id": 5,
+            "response": "কাটমন্ডু",
+            "extracted_answer": null,
+            "is_correct": false,
+            "latency": 0.2521607499802485,
+            "error": null
+          },
+          {
+            "resample_id": 6,
+            "response": "কাঠমান্ডু",
+            "extracted_answer": "kathmandu",
+            "is_correct": true,
+            "latency": 0.25256041693501174,
+            "error": null
+          },
+          {
+            "resample_id": 7,
+            "response": "কাঠমান্ডু",
+            "extracted_answer": "kathmandu",
+            "is_correct": true,
+            "latency": 0.25412129203323275,
+            "error": null
+          },
+          {
+            "resample_id": 8,
+            "response": "কাঠমান্ডু",
+            "extracted_answer": "kathmandu",
+            "is_correct": true,
+            "latency": 0.25418862502556294,
+            "error": null
+          },
+          {
+            "resample_id": 9,
+            "response": "কাঠমান্ডু",
+            "extracted_answer": "kathmandu",
+            "is_correct": true,
+            "latency": 0.2519688750617206,
+            "error": null
+          },
+          {
+            "resample_id": 10,
+            "response": "কাঠমান্ডু",
+            "extracted_answer": "kathmandu",
+            "is_correct": true,
+            "latency": 0.2535100830718875,
+            "error": null
+          },
+          {
+            "resample_id": 11,
+            "response": "কাঠমান্ডু",
+            "extracted_answer": "kathmandu",
+            "is_correct": true,
+            "latency": 0.24800445896107703,
+            "error": null
+          },
+          {
+            "resample_id": 12,
+            "response": "কাঠমান্ডু",
+            "extracted_answer": "kathmandu",
+            "is_correct": true,
+            "latency": 0.25358929205685854,
+            "error": null
+          },
+          {
+            "resample_id": 13,
+            "response": "কাঠমান্ডু",
+            "extracted_answer": "kathmandu",
+            "is_correct": true,
+            "latency": 0.2548734159208834,
+            "error": null
+          },
+          {
+            "resample_id": 14,
+            "response": "কাঠমান্ডু",
+            "extracted_answer": "kathmandu",
+            "is_correct": true,
+            "latency": 0.2577386669581756,
+            "error": null
+          }
+        ]
+      },
+      {
+        "model": "hf.co/CohereLabs/tiny-aya-global-GGUF:Q4_K_M",
+        "samples": [
+          {
+            "resample_id": 0,
+            "response": "কাঠমান্ডু",
+            "extracted_answer": "kathmandu",
+            "is_correct": true,
+            "latency": 0.39587454102002084,
+            "error": null
+          },
+          {
+            "resample_id": 1,
+            "response": "কাঠমান্ডু",
+            "extracted_answer": "kathmandu",
+            "is_correct": true,
+            "latency": 0.25313458393793553,
+            "error": null
+          },
+          {
+            "resample_id": 2,
+            "response": "কাঠমান্ডু",
+            "extracted_answer": "kathmandu",
+            "is_correct": true,
+            "latency": 0.24946904205717146,
+            "error": null
+          },
+          {
+            "resample_id": 3,
+            "response": "কাঠমান্ডু",
+            "extracted_answer": "kathmandu",
+            "is_correct": true,
+            "latency": 0.25423291709739715,
+            "error": null
+          },
+          {
+            "resample_id": 4,
+            "response": "কাঠমান্ডু",
+            "extracted_answer": "kathmandu",
+            "is_correct": true,
+            "latency": 0.2575382919749245,
+            "error": null
+          },
+          {
+            "resample_id": 5,
+            "response": "কাঠমান্ডু",
+            "extracted_answer": "kathmandu",
+            "is_correct": true,
+            "latency": 0.25576754193753004,
+            "error": null
+          },
+          {
+            "resample_id": 6,
+            "response": "কাঠমান্ডু",
+            "extracted_answer": "kathmandu",
+            "is_correct": true,
+            "latency": 0.2555792909115553,
+            "error": null
+          },
+          {
+            "resample_id": 7,
+            "response": "কাঠমান্ডু",
+            "extracted_answer": "kathmandu",
+            "is_correct": true,
+            "latency": 0.25500587502028793,
+            "error": null
+          },
+          {
+            "resample_id": 8,
+            "response": "কাঠমান্ডু",
+            "extracted_answer": "kathmandu",
+            "is_correct": true,
+            "latency": 0.25240766699425876,
+            "error": null
+          },
+          {
+            "resample_id": 9,
+            "response": "কাঠমান্ডু",
+            "extracted_answer": "kathmandu",
+            "is_correct": true,
+            "latency": 0.25220141699537635,
+            "error": null
+          },
+          {
+            "resample_id": 10,
+            "response": "Given that Nepal does not have a capital city, this question seems to be based on a misunderstanding.",
+            "extracted_answer": null,
+            "is_correct": false,
+            "latency": 0.5646308750147,
+            "error": null
+          },
+          {
+            "resample_id": 11,
+            "response": "কাঠমান্ডু",
+            "extracted_answer": "kathmandu",
+            "is_correct": true,
+            "latency": 0.25376095809042454,
+            "error": null
+          },
+          {
+            "resample_id": 12,
+            "response": "কাঠমুন্ডু",
+            "extracted_answer": null,
+            "is_correct": false,
+            "latency": 0.2892876249970868,
+            "error": null
+          },
+          {
+            "resample_id": 13,
+            "response": "কাঠমান্ডু",
+            "extracted_answer": "kathmandu",
+            "is_correct": true,
+            "latency": 0.2466123750200495,
+            "error": null
+          },
+          {
+            "resample_id": 14,
+            "response": "কাঠমান্ডু",
+            "extracted_answer": "kathmandu",
+            "is_correct": true,
+            "latency": 0.24622754205483943,
+            "error": null
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "prompt_id": "bangladesh_capital_bn",
+    "fact_id": "bangladesh_capital",
+    "language": "bn",
+    "original_prompt": "বাংলাদেশের রাজধানী কী?",
+    "expected_canonical": "dhaka",
+    "responses": [
+      {
+        "model": "hf.co/CohereLabs/tiny-aya-fire-GGUF:Q4_K_M",
+        "samples": [
+          {
+            "resample_id": 0,
+            "response": "আগ্রা",
+            "extracted_answer": null,
+            "is_correct": false,
+            "latency": 0.33858441608026624,
+            "error": null
+          },
+          {
+            "resample_id": 1,
+            "response": "ডাকাও।",
+            "extracted_answer": null,
+            "is_correct": false,
+            "latency": 0.21625358401797712,
+            "error": null
+          },
+          {
+            "resample_id": 2,
+            "response": "দাকাতকিপাড়া",
+            "extracted_answer": null,
+            "is_correct": false,
+            "latency": 0.29199983400758356,
+            "error": null
+          },
+          {
+            "resample_id": 3,
+            "response": "ডাকাতখানা",
+            "extracted_answer": null,
+            "is_correct": false,
+            "latency": 0.24518808303400874,
+            "error": null
+          },
+          {
+            "resample_id": 4,
+            "response": "দাকাপাত।",
+            "extracted_answer": null,
+            "is_correct": false,
+            "latency": 0.24509670794941485,
+            "error": null
+          },
+          {
+            "resample_id": 5,
+            "response": "ढাকার।",
+            "extracted_answer": null,
+            "is_correct": false,
+            "latency": 0.19105287501588464,
+            "error": null
+          },
+          {
+            "resample_id": 6,
+            "response": "গাজীপুর",
+            "extracted_answer": null,
+            "is_correct": false,
+            "latency": 0.22670612495858222,
+            "error": null
+          },
+          {
+            "resample_id": 7,
+            "response": "দক্ষিণ গঙ্গাতীর",
+            "extracted_answer": null,
+            "is_correct": false,
+            "latency": 0.3077111250022426,
+            "error": null
+          },
+          {
+            "resample_id": 8,
+            "response": "ডাকাপাত",
+            "extracted_answer": null,
+            "is_correct": false,
+            "latency": 0.2259305000770837,
+            "error": null
+          },
+          {
+            "resample_id": 9,
+            "response": "রাবাউত",
+            "extracted_answer": null,
+            "is_correct": false,
+            "latency": 0.21971958398353308,
+            "error": null
+          },
+          {
+            "resample_id": 10,
+            "response": "ডাকা",
+            "extracted_answer": null,
+            "is_correct": false,
+            "latency": 0.19669820799026638,
+            "error": null
+          },
+          {
+            "resample_id": 11,
+            "response": "ढাকাই।",
+            "extracted_answer": null,
+            "is_correct": false,
+            "latency": 0.22326833300758153,
+            "error": null
+          },
+          {
+            "resample_id": 12,
+            "response": "ঢাকারাজধানী",
+            "extracted_answer": null,
+            "is_correct": false,
+            "latency": 0.24719608307350427,
+            "error": null
+          },
+          {
+            "resample_id": 13,
+            "response": "ঢাকাই",
+            "extracted_answer": null,
+            "is_correct": false,
+            "latency": 0.19695062492974102,
+            "error": null
+          },
+          {
+            "resample_id": 14,
+            "response": "ঢাকারা",
+            "extracted_answer": null,
+            "is_correct": false,
+            "latency": 0.19800049997866154,
+            "error": null
+          }
+        ]
+      },
+      {
+        "model": "hf.co/CohereLabs/tiny-aya-global-GGUF:Q4_K_M",
+        "samples": [
+          {
+            "resample_id": 0,
+            "response": "ডাকাতখানা",
+            "extracted_answer": null,
+            "is_correct": false,
+            "latency": 0.4039110419107601,
+            "error": null
+          },
+          {
+            "resample_id": 1,
+            "response": "ডাকান",
+            "extracted_answer": null,
+            "is_correct": false,
+            "latency": 0.19707987492438406,
+            "error": null
+          },
+          {
+            "resample_id": 2,
+            "response": "গাজীউ丁পুর",
+            "extracted_answer": null,
+            "is_correct": false,
+            "latency": 0.26969529199413955,
+            "error": null
+          },
+          {
+            "resample_id": 3,
+            "response": "মাদাগাস্কার",
+            "extracted_answer": null,
+            "is_correct": false,
+            "latency": 0.2544512499589473,
+            "error": null
+          },
+          {
+            "resample_id": 4,
+            "response": "ডাকান",
+            "extracted_answer": null,
+            "is_correct": false,
+            "latency": 0.19705983402673155,
+            "error": null
+          },
+          {
+            "resample_id": 5,
+            "response": "ডাকান",
+            "extracted_answer": null,
+            "is_correct": false,
+            "latency": 0.20014283305499703,
+            "error": null
+          },
+          {
+            "resample_id": 6,
+            "response": "ঢাকা",
+            "extracted_answer": "dhaka",
+            "is_correct": true,
+            "latency": 0.14825474994722754,
+            "error": null
+          },
+          {
+            "resample_id": 7,
+            "response": "ডাকাস",
+            "extracted_answer": null,
+            "is_correct": false,
+            "latency": 0.19408829102758318,
+            "error": null
+          },
+          {
+            "resample_id": 8,
+            "response": "ডাক নগরী",
+            "extracted_answer": null,
+            "is_correct": false,
+            "latency": 0.24029770807828754,
+            "error": null
+          },
+          {
+            "resample_id": 9,
+            "response": "ढাকাই",
+            "extracted_answer": null,
+            "is_correct": false,
+            "latency": 0.19517891702707857,
+            "error": null
+          },
+          {
+            "resample_id": 10,
+            "response": "ঢাকা",
+            "extracted_answer": "dhaka",
+            "is_correct": true,
+            "latency": 0.14904820802621543,
+            "error": null
+          },
+          {
+            "resample_id": 11,
+            "response": "ডাকনাগড়",
+            "extracted_answer": null,
+            "is_correct": false,
+            "latency": 0.24585966602899134,
+            "error": null
+          },
+          {
+            "resample_id": 12,
+            "response": "দারাজপুর",
+            "extracted_answer": null,
+            "is_correct": false,
+            "latency": 0.19306033302564174,
+            "error": null
+          },
+          {
+            "resample_id": 13,
+            "response": "ডাককা",
+            "extracted_answer": null,
+            "is_correct": false,
+            "latency": 0.19264358398504555,
+            "error": null
+          },
+          {
+            "resample_id": 14,
+            "response": "দাকান",
+            "extracted_answer": null,
+            "is_correct": false,
+            "latency": 0.1997550829546526,
+            "error": null
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "prompt_id": "bangladesh_capital_en",
+    "fact_id": "bangladesh_capital",
+    "language": "en",
+    "original_prompt": "What is the capital of Bangladesh?",
+    "expected_canonical": "dhaka",
+    "responses": [
+      {
+        "model": "hf.co/CohereLabs/tiny-aya-fire-GGUF:Q4_K_M",
+        "samples": [
+          {
+            "resample_id": 0,
+            "response": "Dhaka",
+            "extracted_answer": "dhaka",
+            "is_correct": true,
+            "latency": 0.3508399169659242,
+            "error": null
+          },
+          {
+            "resample_id": 1,
+            "response": "Dhaka",
+            "extracted_answer": "dhaka",
+            "is_correct": true,
+            "latency": 0.2001129590207711,
+            "error": null
+          },
+          {
+            "resample_id": 2,
+            "response": "Dhaka",
+            "extracted_answer": "dhaka",
+            "is_correct": true,
+            "latency": 0.19156262499745935,
+            "error": null
+          },
+          {
+            "resample_id": 3,
+            "response": "Dhaka",
+            "extracted_answer": "dhaka",
+            "is_correct": true,
+            "latency": 0.19685475004371256,
+            "error": null
+          },
+          {
+            "resample_id": 4,
+            "response": "Dhaka",
+            "extracted_answer": "dhaka",
+            "is_correct": true,
+            "latency": 0.19652975001372397,
+            "error": null
+          },
+          {
+            "resample_id": 5,
+            "response": "Dhaka",
+            "extracted_answer": "dhaka",
+            "is_correct": true,
+            "latency": 0.19896075001452118,
+            "error": null
+          },
+          {
+            "resample_id": 6,
+            "response": "Dhaka",
+            "extracted_answer": "dhaka",
+            "is_correct": true,
+            "latency": 0.198593208915554,
+            "error": null
+          },
+          {
+            "resample_id": 7,
+            "response": "Dhaka",
+            "extracted_answer": "dhaka",
+            "is_correct": true,
+            "latency": 0.19140383298508823,
+            "error": null
+          },
+          {
+            "resample_id": 8,
+            "response": "Dhaka",
+            "extracted_answer": "dhaka",
+            "is_correct": true,
+            "latency": 0.19523470802232623,
+            "error": null
+          },
+          {
+            "resample_id": 9,
+            "response": "Dhaka",
+            "extracted_answer": "dhaka",
+            "is_correct": true,
+            "latency": 0.19603800005279481,
+            "error": null
+          },
+          {
+            "resample_id": 10,
+            "response": "Dhaka",
+            "extracted_answer": "dhaka",
+            "is_correct": true,
+            "latency": 0.19506237492896616,
+            "error": null
+          },
+          {
+            "resample_id": 11,
+            "response": "Dhaka",
+            "extracted_answer": "dhaka",
+            "is_correct": true,
+            "latency": 0.19726120901759714,
+            "error": null
+          },
+          {
+            "resample_id": 12,
+            "response": "Dhaka",
+            "extracted_answer": "dhaka",
+            "is_correct": true,
+            "latency": 0.19219829107169062,
+            "error": null
+          },
+          {
+            "resample_id": 13,
+            "response": "Dhaka",
+            "extracted_answer": "dhaka",
+            "is_correct": true,
+            "latency": 0.19590345898177475,
+            "error": null
+          },
+          {
+            "resample_id": 14,
+            "response": "Dhaka",
+            "extracted_answer": "dhaka",
+            "is_correct": true,
+            "latency": 0.19430333306081593,
+            "error": null
+          }
+        ]
+      },
+      {
+        "model": "hf.co/CohereLabs/tiny-aya-global-GGUF:Q4_K_M",
+        "samples": [
+          {
+            "resample_id": 0,
+            "response": "Dhaka",
+            "extracted_answer": "dhaka",
+            "is_correct": true,
+            "latency": 0.33296174998395145,
+            "error": null
+          },
+          {
+            "resample_id": 1,
+            "response": "Dhaka",
+            "extracted_answer": "dhaka",
+            "is_correct": true,
+            "latency": 0.19317391701042652,
+            "error": null
+          },
+          {
+            "resample_id": 2,
+            "response": "Dhaka",
+            "extracted_answer": "dhaka",
+            "is_correct": true,
+            "latency": 0.19367379194591194,
+            "error": null
+          },
+          {
+            "resample_id": 3,
+            "response": "Dhaka",
+            "extracted_answer": "dhaka",
+            "is_correct": true,
+            "latency": 0.19540524994954467,
+            "error": null
+          },
+          {
+            "resample_id": 4,
+            "response": "Dhaka",
+            "extracted_answer": "dhaka",
+            "is_correct": true,
+            "latency": 0.19781487493310124,
+            "error": null
+          },
+          {
+            "resample_id": 5,
+            "response": "Dhaka",
+            "extracted_answer": "dhaka",
+            "is_correct": true,
+            "latency": 0.19708166597411036,
+            "error": null
+          },
+          {
+            "resample_id": 6,
+            "response": "Dhaka",
+            "extracted_answer": "dhaka",
+            "is_correct": true,
+            "latency": 0.19384670804720372,
+            "error": null
+          },
+          {
+            "resample_id": 7,
+            "response": "Dhaka",
+            "extracted_answer": "dhaka",
+            "is_correct": true,
+            "latency": 0.19277170801069587,
+            "error": null
+          },
+          {
+            "resample_id": 8,
+            "response": "Dhaka",
+            "extracted_answer": "dhaka",
+            "is_correct": true,
+            "latency": 0.19583300000522286,
+            "error": null
+          },
+          {
+            "resample_id": 9,
+            "response": "Dhaka",
+            "extracted_answer": "dhaka",
+            "is_correct": true,
+            "latency": 0.19909849995747209,
+            "error": null
+          },
+          {
+            "resample_id": 10,
+            "response": "Dhaka",
+            "extracted_answer": "dhaka",
+            "is_correct": true,
+            "latency": 0.194766917033121,
+            "error": null
+          },
+          {
+            "resample_id": 11,
+            "response": "Dhaka",
+            "extracted_answer": "dhaka",
+            "is_correct": true,
+            "latency": 0.22168304107617587,
+            "error": null
+          },
+          {
+            "resample_id": 12,
+            "response": "Dhaka",
+            "extracted_answer": "dhaka",
+            "is_correct": true,
+            "latency": 0.22690016694832593,
+            "error": null
+          },
+          {
+            "resample_id": 13,
+            "response": "Dhaka",
+            "extracted_answer": "dhaka",
+            "is_correct": true,
+            "latency": 0.19829529197886586,
+            "error": null
+          },
+          {
+            "resample_id": 14,
+            "response": "Dhaka",
+            "extracted_answer": "dhaka",
+            "is_correct": true,
+            "latency": 0.1997354170307517,
+            "error": null
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "prompt_id": "bangladesh_capital_ne",
+    "fact_id": "bangladesh_capital",
+    "language": "ne",
+    "original_prompt": "बङ्गलादेशको राजधानी के हो?",
+    "expected_canonical": "dhaka",
+    "responses": [
+      {
+        "model": "hf.co/CohereLabs/tiny-aya-fire-GGUF:Q4_K_M",
+        "samples": [
+          {
+            "resample_id": 0,
+            "response": "ढाका",
+            "extracted_answer": "dhaka",
+            "is_correct": true,
+            "latency": 0.3166199999395758,
+            "error": null
+          },
+          {
+            "resample_id": 1,
+            "response": "ढाका",
+            "extracted_answer": "dhaka",
+            "is_correct": true,
+            "latency": 0.168467125040479,
+            "error": null
+          },
+          {
+            "resample_id": 2,
+            "response": "ढाका",
+            "extracted_answer": "dhaka",
+            "is_correct": true,
+            "latency": 0.1752512090606615,
+            "error": null
+          },
+          {
+            "resample_id": 3,
+            "response": "ढाका",
+            "extracted_answer": "dhaka",
+            "is_correct": true,
+            "latency": 0.17478933394886553,
+            "error": null
+          },
+          {
+            "resample_id": 4,
+            "response": "ढाका",
+            "extracted_answer": "dhaka",
+            "is_correct": true,
+            "latency": 0.1782932080095634,
+            "error": null
+          },
+          {
+            "resample_id": 5,
+            "response": "ढाका",
+            "extracted_answer": "dhaka",
+            "is_correct": true,
+            "latency": 0.17270674998871982,
+            "error": null
+          },
+          {
+            "resample_id": 6,
+            "response": "ढाका",
+            "extracted_answer": "dhaka",
+            "is_correct": true,
+            "latency": 0.16988987498916686,
+            "error": null
+          },
+          {
+            "resample_id": 7,
+            "response": "ढाका",
+            "extracted_answer": "dhaka",
+            "is_correct": true,
+            "latency": 0.16687995800748467,
+            "error": null
+          },
+          {
+            "resample_id": 8,
+            "response": "ढाका",
+            "extracted_answer": "dhaka",
+            "is_correct": true,
+            "latency": 0.17136470798868686,
+            "error": null
+          },
+          {
+            "resample_id": 9,
+            "response": "ढाका",
+            "extracted_answer": "dhaka",
+            "is_correct": true,
+            "latency": 0.17503254197072238,
+            "error": null
+          },
+          {
+            "resample_id": 10,
+            "response": "ढाका",
+            "extracted_answer": "dhaka",
+            "is_correct": true,
+            "latency": 0.1846702080219984,
+            "error": null
+          },
+          {
+            "resample_id": 11,
+            "response": "ढाका",
+            "extracted_answer": "dhaka",
+            "is_correct": true,
+            "latency": 0.20136962493415922,
+            "error": null
+          },
+          {
+            "resample_id": 12,
+            "response": "ढाका",
+            "extracted_answer": "dhaka",
+            "is_correct": true,
+            "latency": 0.16843337495811284,
+            "error": null
+          },
+          {
+            "resample_id": 13,
+            "response": "ढाका",
+            "extracted_answer": "dhaka",
+            "is_correct": true,
+            "latency": 0.17067537503316998,
+            "error": null
+          },
+          {
+            "resample_id": 14,
+            "response": "ढाका",
+            "extracted_answer": "dhaka",
+            "is_correct": true,
+            "latency": 0.17173437494784594,
+            "error": null
+          }
+        ]
+      },
+      {
+        "model": "hf.co/CohereLabs/tiny-aya-global-GGUF:Q4_K_M",
+        "samples": [
+          {
+            "resample_id": 0,
+            "response": "దిల్లీ",
+            "extracted_answer": null,
+            "is_correct": false,
+            "latency": 0.3388616250595078,
+            "error": null
+          },
+          {
+            "resample_id": 1,
+            "response": "దిల్లీ",
+            "extracted_answer": null,
+            "is_correct": false,
+            "latency": 0.2025870840298012,
+            "error": null
+          },
+          {
+            "resample_id": 2,
+            "response": "ढाका",
+            "extracted_answer": "dhaka",
+            "is_correct": true,
+            "latency": 0.17202729196287692,
+            "error": null
+          },
+          {
+            "resample_id": 3,
+            "response": "ढाका",
+            "extracted_answer": "dhaka",
+            "is_correct": true,
+            "latency": 0.173948209034279,
+            "error": null
+          },
+          {
+            "resample_id": 4,
+            "response": "దហारा",
+            "extracted_answer": null,
+            "is_correct": false,
+            "latency": 0.19608704093843699,
+            "error": null
+          },
+          {
+            "resample_id": 5,
+            "response": "ढाका",
+            "extracted_answer": "dhaka",
+            "is_correct": true,
+            "latency": 0.17838616704102606,
+            "error": null
+          },
+          {
+            "resample_id": 6,
+            "response": "ढाका",
+            "extracted_answer": "dhaka",
+            "is_correct": true,
+            "latency": 0.19413208297919482,
+            "error": null
+          },
+          {
+            "resample_id": 7,
+            "response": "ढाका",
+            "extracted_answer": "dhaka",
+            "is_correct": true,
+            "latency": 0.1721245830412954,
+            "error": null
+          },
+          {
+            "resample_id": 8,
+            "response": "डाका",
+            "extracted_answer": "dhaka",
+            "is_correct": true,
+            "latency": 0.17437262507155538,
+            "error": null
+          },
+          {
+            "resample_id": 9,
+            "response": "ढाका",
+            "extracted_answer": "dhaka",
+            "is_correct": true,
+            "latency": 0.17487654206342995,
+            "error": null
+          },
+          {
+            "resample_id": 10,
+            "response": "ढाका",
+            "extracted_answer": "dhaka",
+            "is_correct": true,
+            "latency": 0.17228154209442437,
+            "error": null
+          },
+          {
+            "resample_id": 11,
+            "response": "ढाका",
+            "extracted_answer": "dhaka",
+            "is_correct": true,
+            "latency": 0.1717948749428615,
+            "error": null
+          },
+          {
+            "resample_id": 12,
+            "response": "ढाका",
+            "extracted_answer": "dhaka",
+            "is_correct": true,
+            "latency": 0.1716165830148384,
+            "error": null
+          },
+          {
+            "resample_id": 13,
+            "response": "దహράς",
+            "extracted_answer": null,
+            "is_correct": false,
+            "latency": 0.19214679102879018,
+            "error": null
+          },
+          {
+            "resample_id": 14,
+            "response": "దిల్లీ",
+            "extracted_answer": null,
+            "is_correct": false,
+            "latency": 0.1996444589458406,
+            "error": null
+          }
+        ]
+      }
+    ]
+  }
+]
