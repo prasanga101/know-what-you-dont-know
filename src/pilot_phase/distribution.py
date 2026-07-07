@@ -1,7 +1,7 @@
 import json
 from pprint import pprint
 import numpy as np
-
+import os
 with open("data/pilot1/resampling_results.json", encoding="utf-8") as f:
     output = json.load(f)
 
@@ -158,6 +158,45 @@ for question_key, accuracies in question_accuracies.items():
         bucket = "BORDERLINE"
 
     bucket_counts[bucket] += 1
+    
+
+bucket_counts = {
+    "DIRECT": 0,
+    "TRANSLATE": 0,
+    "UNRESOLVED": 0,
+    "BORDERLINE": 0,
+}
+
+bucket_rows = []
+
+for question_key, accuracies in question_accuracies.items():
+    link, question_number = question_key
+
+    ne_acc = accuracies["ne"]
+    en_acc = accuracies["en"]
+
+    if ne_acc >= 0.70:
+        bucket = "DIRECT"
+    elif ne_acc <= 0.30 and en_acc >= 0.60:
+        bucket = "TRANSLATE"
+    elif ne_acc <= 0.30 and en_acc <= 0.30:
+        bucket = "UNRESOLVED"
+    else:
+        bucket = "BORDERLINE"
+
+    bucket_counts[bucket] += 1
+
+    bucket_rows.append({
+        "link": link,
+        "question_number": question_number,
+        "ne_accuracy": ne_acc,
+        "en_accuracy": en_acc,
+        "bucket": bucket,
+    })
+    
+os.makedirs("data/pilot1",exist_ok=True)
+with open("data/pilot1/questions_bucket.json","w",encoding="utf-8") as f:
+    json.dump(bucket_rows,f,indent=2,ensure_ascii=False)
 
 print("\n--- Threshold buckets ---")
 for bucket, count in bucket_counts.items():
