@@ -5,4 +5,5 @@ data/processed/*
 data/pilot1/*
 data/passage1/*
 data/fidelity_control1/*
+data/infra_check/*
 .DS_Store
