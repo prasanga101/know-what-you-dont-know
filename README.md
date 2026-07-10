@@ -1,4 +1,4 @@
-# LRCal-Agent
+# Know What you don't Know (LRCal-Agent)
 
 LRCal-Agent studies whether a low-resource-language LLM system can recognize when it should answer, translate, retrieve evidence, abstain, or escalate instead of answering confidently and incorrectly.
 
