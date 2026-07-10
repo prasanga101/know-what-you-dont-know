@@ -2,7 +2,7 @@
 
 LRCal-Agent studies whether a low-resource-language LLM system can recognize when it should answer, translate, retrieve evidence, abstain, or escalate instead of answering confidently and incorrectly.
 
-The current project has advanced from setup into a completed Phase 1 no-passage pilot and a Phase 2 passage-retrieval experiment on parallel English/Nepali Belebele multiple-choice questions. The key finding so far is that retrieval behaves very differently by language: adding the correct passage resolves most English failures, but only a small minority of Nepali failures.
+The current project has advanced from setup through a completed Phase 1 no-passage pilot, a Phase 2 passage-retrieval experiment, and a Phase 3 fidelity-control experiment on parallel English/Nepali Belebele multiple-choice questions. Two key findings so far: retrieval behaves very differently by language (adding the correct passage resolves most English failures but only a small minority of Nepali failures), and among the Nepali items retrieval still can't fix, most turn out to be generation-fidelity failures rather than comprehension gaps — the model often can't reliably state the correct answer even when it is handed to it directly.
 
 ## Research Question
 
@@ -136,6 +136,60 @@ Among previously failing items only:
 | Nepali | 108 | 15 (13.9%) | 78 (72.2%) | 15 (13.9%) |
 | English | 114 | 80 (70.2%) | 27 (23.7%) | 7 (6.1%) |
 
+### Phase 3: Fidelity-Control Experiment
+
+Completed.
+
+Phase 2 left an open question: for the 78 Nepali `STILL_FAILS` items — cases where the model had the correct passage and still failed — is that a genuine comprehension gap, or an inability to reliably generate/select the right answer even when comprehension isn't the issue? Phase 3 isolates the two.
+
+**Design.** Each of the 78 `STILL_FAILS` Nepali items (from `data/passage1/retrieval_comparison.json`, pulled via `src/fieldity_control/failing_items.py`) was manually audited and given an `english_hint` (an English-language paraphrase of the correct answer) and an `audit_label`:
+
+| `audit_label` | Count | Meaning |
+|---|---:|---|
+| `VALID_EVIDENCE_MODEL_FAILURE` | 63 | Clean item, evidence is valid |
+| `AWKWARD_BUT_USABLE_TRANSLATION` | 10 | Translation is rough but usable |
+| `AMBIGUOUS_ITEM` | 3 | Excluded — item itself is ambiguous |
+| `CORRUPTED_EVIDENCE` | 2 | Excluded — input data is compromised |
+
+`src/fieldity_control/build_fieldity_control.py` then builds a "control prompt" per item: the passage, question, options, and the English hint, asking the model to answer with a single letter. If the model still can't answer correctly when handed the answer, the failure is generation fidelity, not comprehension.
+
+Each control prompt was resampled 15 times against Tiny Aya Fire at temperature 0.7 (`src/fieldity_control/resample_fidelity_control.py`, graded with `src/fieldity_control/answer_fidelty_mcq.py`) — 78 x 15 = 1,170 calls, logged to `data/fidelity_control1/resampled_fidelity_control_output.json`. The answer-extraction regex was tightened partway through the run to require punctuation or an answer-keyword near the letter (not just any bare A-D character); re-validated retroactively against the same raw responses, the corrected/total count held at 472/1,170, confirming the fix only reclassified previously-wrong guesses as unparseable rather than changing genuine correct/incorrect calls.
+
+**Finding 1 — overall accuracy is only 40.3% (472/1,170)** on a task where the model is handed the answer directly. That's far below what a "control" condition should produce, and is the core evidence that generation fidelity, not comprehension, is the dominant failure mode.
+
+**Finding 2 — Tiny Aya Fire has a real position bias toward option A**, confirmed both by raw-response inspection and by letter-conditioned accuracy:
+
+| Correct letter | Correct-answer share | Selected share | Accuracy when this is the correct letter |
+|---|---:|---:|---:|
+| A | 29.5% | 45.7% | 60.3% |
+| B | 19.2% | 13.5% | 29.8% |
+| C | 17.9% | 16.8% | 35.2% |
+| D | 33.3% | 15.7% | 31.5% |
+
+A is picked far more than its ground-truth share (blind guessing toward A partly masquerades as "correct"), while B, C, and D are under-picked relative to their share and answered correctly far less often when they are the right choice. This means any pass/fail result on an A-correct item is confounded with blind position bias.
+
+**Side investigation — Qwen2.5-1.5B-instruct as a candidate Layer 2 model.** The same 1,170-call battery was run against Qwen. It scored lower overall (345/1,170 = 29.5%) and showed an even more extreme bias, selecting D 77.1% of the time. Its apparent per-bucket "wins" evaporated under a bias-controlled check: splitting the `AWKWARD_BUT_USABLE_TRANSLATION` bucket into D-correct vs. non-D-correct subsets, Qwen scored 71.1% vs. 0.0% respectively — its bucket advantage was fully explained by that bucket's ground-truth letters happening to skew toward D, not genuine capability. No complementary Layer 2 candidate found here; the general takeaway is to never trust a per-bucket model comparison without conditioning on answer position first.
+
+**Classification.** The 5 flagged items (`AMBIGUOUS_ITEM` + `CORRUPTED_EVIDENCE`) were excluded, leaving 73 clean items (`src/fieldity_control/filter_resampled_items.py`, `data/fidelity_control1/filtered_resampled_items.json`). Each item was classified by majority vote (>= 8/15 correct, the only meaningful "more right than wrong" threshold with an odd resample count):
+
+| Classification | Count | Share | Meaning |
+|---|---:|---:|---|
+| `GENERATION_FIDELITY_ISSUE` | 48 | 65.8% | Failed even with the answer handed to it |
+| `COMPREHENSION_GAP` | 13 | 17.8% | Passed, correct letter wasn't A — a real win |
+| `PASS_CONFOUNDED_BY_BIAS` | 12 | 16.4% | Passed, but correct letter was A — can't rule out blind bias |
+
+(`data/fidelity_control1/phase3_classification.json`, `data/fidelity_control1/phase3_classification_summary.json`)
+
+**Follow-up refinement.** Breaking the 48 `GENERATION_FIDELITY_ISSUE` items down by raw `correct_count` (0-15, via `src/fieldity_control/viz_resample_classification.py`, plotted in `gen_fidelity_correct_count_hist.png`) shows the failures aren't uniformly "near-miss":
+
+- 18 items (37.5%): near-total failure, 0-2/15 correct even with the answer handed to them
+- 16 items (33.3%): weak partial signal, 3-4/15 correct
+- 14 items (29.2%): borderline/unstable, 5-7/15 correct
+
+This suggests three different remedies rather than one — near-total failures likely need a translate/retrieve/abstain fallback rather than voting; weak-partial cases need stronger verification against evidence; only the borderline tier is a good candidate for consistency/voting-based repair, and even that needs confirmation that the correct answer is the actual plurality winner across resamples rather than assumed from the count.
+
+![Distribution of correct_count within GENERATION_FIDELITY_ISSUE items (n=48)](gen_fidelity_correct_count_hist.png)
+
 ## Main Research Finding So Far
 
 The passage experiment shows a major asymmetry:
@@ -145,11 +199,14 @@ The passage experiment shows a major asymmetry:
 
 This suggests the policy cannot treat retrieval as language-neutral. For Nepali, the model often receives the correct passage but still cannot reliably extract the answer.
 
+Phase 3 sharpens the "model still cannot use it reliably" case further. At minimum 65.8% of Nepali `STILL_FAILS` items are generation-fidelity failures, not comprehension gaps — the model can't reliably produce the correct letter even when the answer is handed to it directly, and Tiny Aya Fire's measurable bias toward option A means even the 16.4% of "passes" tied to a correct answer of A can't be fully trusted as genuine comprehension. This means `RETRIEVE` alone won't fix the majority of `STILL_FAILS` cases: the policy needs a distinct repair/verification mechanism, not a single knowledge-gap label.
+
 That means the action policy may need to distinguish:
 
 - `RETRIEVE`: evidence missing, retrieval likely fixes the problem
-- `ABSTAIN` or `ESCALATE`: evidence present, but the model still cannot use it reliably
+- `ABSTAIN` or `ESCALATE`: evidence present, comprehension gap confirmed, model still cannot use it reliably
 - `TRANSLATE`: English recovers where Nepali does not
+- a repair/verification path for generation-fidelity failures (distinct from `ABSTAIN`): near-total failures likely need a fallback action, weak-partial cases need evidence-grounded verification, and only borderline/unstable cases are candidates for consistency-based repair
 
 ## Project Layout
 
@@ -173,16 +230,25 @@ LRCal-Agent/
       answer_passage_mcq.py        # Extract with-passage answer
       resample_unresolved_pmcq.py  # Run with-passage resamples
       compare_passage_effect.py    # Compare no-passage vs with-passage
+    fieldity_control/
+      failing_items.py             # Pull Nepali STILL_FAILS items from Phase 2
+      build_fieldity_control.py    # Build control prompts (passage+question+hint)
+      answer_fidelty_mcq.py        # Extract A/B/C/D from control-prompt responses
+      resample_fidelity_control.py # Run 15 control resamples per item
+      filter_resampled_items.py    # Exclude flagged items, classify by majority vote
+      viz_resample_classification.py # Histogram of correct_count within failures
     tests/
       distribution_comparision.md  # Current experiment summary and interpretation
   data/
     processed/                     # Cleaned dataset caches
     pilot1/                        # Phase 1 samples, trials, buckets, review sample
     passage1/                      # Phase 2 passage samples and retrieval comparison
+    fidelity_control1/             # Phase 3 control prompts, resamples, classification
     loader/                        # Dataset loading helpers
     data_cleaner/                  # Dataset-specific cleaners
   results/                         # Early resampling sanity checks
   phases/                          # Phase diagrams
+  gen_fidelity_correct_count_hist.png # Phase 3 correct_count histogram
 ```
 
 ## Important Data Artifacts
@@ -197,6 +263,14 @@ LRCal-Agent/
 | `data/passage1/unresolved_sample.json` | 166 `UNRESOLVED`/`BORDERLINE` items selected for Phase 2 |
 | `data/passage1/resampled_passage_output.json` | 4,980 with-passage trials |
 | `data/passage1/retrieval_comparison.json` | No-passage vs with-passage classification |
+| `data/fidelity_control1/still_fails_items.json` | 78 Nepali `STILL_FAILS` items pulled from Phase 2 |
+| `data/fidelity_control1/fidelity_control_prompts.json` | Audited items + control prompts (passage, question, English hint) |
+| `data/fidelity_control1/resampled_fidelity_control_output.json` | 1,170 control-prompt trials (Tiny Aya Fire) |
+| `data/fidelity_control1/resampled_fidelity_control_output_qwen_model.json` | Same 1,170-trial battery run against Qwen2.5-1.5B-instruct |
+| `data/fidelity_control1/filtered_resampled_items.json` | 73-item clean subset (excludes `AMBIGUOUS_ITEM`/`CORRUPTED_EVIDENCE`) |
+| `data/fidelity_control1/phase3_classification.json` | Per-item generation-fidelity vs. comprehension-gap classification |
+| `data/fidelity_control1/phase3_classification_summary.json` | Classification counts and percentages |
+| `gen_fidelity_correct_count_hist.png` | Distribution of `correct_count` within generation-fidelity failures |
 | `src/tests/distribution_comparision.md` | Human-readable results summary and interpretation |
 
 ## Reproducing The Pipeline
@@ -221,6 +295,18 @@ python -m src.passage_phase.resample_unresolved_pmcq
 python -m src.passage_phase.compare_passage_effect
 ```
 
+### Phase 3: Fidelity-Control Experiment
+
+```bash
+python -m src.fieldity_control.failing_items
+# manual audit step: add "english_hint" and "audit_label" to each item in
+# data/fidelity_control1/still_fails_items.json before continuing
+python -m src.fieldity_control.build_fieldity_control
+python -m src.fieldity_control.resample_fidelity_control
+python -m src.fieldity_control.filter_resampled_items
+python -m src.fieldity_control.viz_resample_classification
+```
+
 The scripts assume Ollama is available locally and that the configured model can be called through `fire_api_call/src.py`.
 
 Current model constant used by the resampling scripts:
@@ -241,18 +327,20 @@ This matters for LRCal-Agent because a policy trained only on no-passage confide
 
 Near-term:
 
-1. Cleanly separate dataset artifacts from genuine model failures.
-2. Expand manual verification of Nepali `STILL_FAILS` cases where English becomes `RETRIEVE`.
-3. Decide whether "retrieval attempted but still unusable" should map to `ABSTAIN`, `ESCALATE`, or a distinct policy label.
-4. Build a policy-label table from Phase 1 and Phase 2 outputs.
-5. Add Bengali and BanglaRQA abstention data back into the action-policy framing.
+1. Design and validate a repair/verification mechanism for `GENERATION_FIDELITY_ISSUE` items, tiered by `correct_count` (near-total failure vs. weak-partial vs. borderline/unstable) rather than a single fallback.
+2. Verify that the plurality answer across resamples actually matches ground truth for the borderline/unstable tier before treating it as a voting-repairable case.
+3. Build a de-biasing step (or bias-aware calibration feature) for Tiny Aya Fire's position bias toward option A, since it confounds the 12 `PASS_CONFOUNDED_BY_BIAS` items and likely biases raw MCQ accuracy elsewhere in the pipeline.
+4. Cleanly separate dataset artifacts from genuine model failures.
+5. Build a policy-label table from Phase 1, Phase 2, and Phase 3 outputs (RETRIEVE / COMPREHENSION_GAP / GENERATION_FIDELITY_ISSUE, tiered).
+6. Add Bengali and BanglaRQA abstention data back into the action-policy framing.
 
 Later:
 
 1. Integrate translation as an actual tool path.
 2. Compare English vs Hindi as recovery targets for Nepali `TRANSLATE` candidates.
-3. Train the Layer 2 policy module using calibration features, language, retrieval status, and action labels.
-4. Evaluate whether the trained policy outperforms fixed threshold rules.
+3. Evaluate other candidate Layer 2 models with bias-conditioned comparisons (Qwen2.5-1.5B-instruct was ruled out — no genuine complementary capability, just a stronger position bias toward D).
+4. Train the Layer 2 policy module using calibration features, language, retrieval status, and action labels.
+5. Evaluate whether the trained policy outperforms fixed threshold rules.
 
 ## Notes On Reliability
 
@@ -265,5 +353,7 @@ Known caveats:
 - some gold labels and distractors have documented defects
 - MCQ letter extraction is intentionally simple and should be stress-tested before larger runs
 - current thresholds are research heuristics, not final policy boundaries
+- Tiny Aya Fire has a confirmed position bias toward option A (45.7% selected vs. 29.5% correct); any pass/fail result on an A-correct item should be treated as potentially confounded, not just Phase 3's `PASS_CONFOUNDED_BY_BIAS` items
+- Phase 3's trivial-baseline / fact-repetition control (meant to establish a fidelity floor independent of task difficulty) was designed but not fully built out — the answer-handed control task became the main focus instead
 
 These caveats are part of the research contribution: LRCal-Agent is explicitly trying to learn when model behavior is unsupported, unstable, or language-conditionally unreliable.
