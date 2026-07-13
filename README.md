@@ -190,6 +190,20 @@ This suggests three different remedies rather than one — near-total failures l
 
 ![Distribution of correct_count within GENERATION_FIDELITY_ISSUE items (n=48)](gen_fidelity_correct_count_hist.png)
 
+### Follow-up: Logprob-Based Bias Verification (`infra_check`)
+
+Completed.
+
+Phase 3 flagged 12 items as `PASS_CONFOUNDED_BY_BIAS` — cases where the model passed the control task (>= 8/15 correct at temperature 0.7) but the correct letter was A, so the pass couldn't be distinguished from Tiny Aya Fire's position bias toward A. The resample-based vote can't resolve this because sampling noise and bias both push toward the same letter.
+
+`src/bias_policy/infra_check` builds a deterministic check instead of a stochastic one:
+
+- `test_ollama_logprobs.py` pulls the 12 `PASS_CONFOUNDED_BY_BIAS` items out of `data/fidelity_control1/phase3_classification.json` / `resampled_fidelity_control_output.json` into `data/infra_check/ollama_logprobs.json`.
+- `build_logprobs.py` dedupes to one prompt per item (12 unique) and wraps each in a single-letter-answer template, saved to `data/infra_check/resample_ollama_logprobs.json`.
+- `resample_logprobs.py` calls Ollama's `/api/generate` with `logprobs: true`, `top_logprobs: 20`, and `temperature: 0`, extracts the logprobs for A/B/C/D from the first generated token, and converts them to a softmax distribution over just those four options. A sanity invariant is checked on every item: at temperature 0 the model's emitted token is by construction the argmax over the *full* vocabulary, so if it emitted a letter A-D, that letter must also be the argmax within the extracted A/B/C/D subset — this held on all 12/12 items, confirming the logprob extraction is trustworthy. Results are saved to `data/infra_check/ollama_logprob_probe_results.json`.
+
+**Finding.** At temperature 0 (no sampling noise), the model's true top choice (by logprob) matches the correct letter A on only **7 of 12 items (58.3%)**. The other 5 have a different deterministic argmax (D on 2, and B and C on one each), meaning their earlier temperature-0.7 "pass" was resample noise landing on the biased letter, not a genuine model preference for the correct answer. This further shrinks the trustworthy comprehension-gap count from Phase 3: of the 13 `COMPREHENSION_GAP` + 12 `PASS_CONFOUNDED_BY_BIAS` items previously counted as passes, at most 13 + 7 = 20 look genuinely earned once bias is deterministically controlled for, not 25.
+
 ## Main Research Finding So Far
 
 The passage experiment shows a major asymmetry:
@@ -237,6 +251,11 @@ LRCal-Agent/
       resample_fidelity_control.py # Run 15 control resamples per item
       filter_resampled_items.py    # Exclude flagged items, classify by majority vote
       viz_resample_classification.py # Histogram of correct_count within failures
+    bias_policy/
+      infra_check/
+        test_ollama_logprobs.py    # Pull PASS_CONFOUNDED_BY_BIAS items from Phase 3
+        build_logprobs.py          # Dedupe + build logprob-probe prompts
+        resample_logprobs.py       # Query Ollama logprobs at temperature 0, verify bias
     tests/
       distribution_comparision.md  # Current experiment summary and interpretation
   data/
@@ -244,6 +263,7 @@ LRCal-Agent/
     pilot1/                        # Phase 1 samples, trials, buckets, review sample
     passage1/                      # Phase 2 passage samples and retrieval comparison
     fidelity_control1/             # Phase 3 control prompts, resamples, classification
+    infra_check/                   # Logprob-based bias verification for PASS_CONFOUNDED_BY_BIAS
     loader/                        # Dataset loading helpers
     data_cleaner/                  # Dataset-specific cleaners
   results/                         # Early resampling sanity checks
@@ -270,6 +290,9 @@ LRCal-Agent/
 | `data/fidelity_control1/filtered_resampled_items.json` | 73-item clean subset (excludes `AMBIGUOUS_ITEM`/`CORRUPTED_EVIDENCE`) |
 | `data/fidelity_control1/phase3_classification.json` | Per-item generation-fidelity vs. comprehension-gap classification |
 | `data/fidelity_control1/phase3_classification_summary.json` | Classification counts and percentages |
+| `data/infra_check/ollama_logprobs.json` | 12 `PASS_CONFOUNDED_BY_BIAS` items pulled from Phase 3 |
+| `data/infra_check/resample_ollama_logprobs.json` | Deduped, single-letter-answer logprob-probe prompts (12 unique) |
+| `data/infra_check/ollama_logprob_probe_results.json` | Temperature-0 logprob probe results, deterministic bias check |
 | `gen_fidelity_correct_count_hist.png` | Distribution of `correct_count` within generation-fidelity failures |
 | `src/tests/distribution_comparision.md` | Human-readable results summary and interpretation |
 
@@ -307,6 +330,14 @@ python -m src.fieldity_control.filter_resampled_items
 python -m src.fieldity_control.viz_resample_classification
 ```
 
+### Follow-up: Logprob-Based Bias Verification
+
+```bash
+python -m src.bias_policy.infra_check.test_ollama_logprobs
+python -m src.bias_policy.infra_check.build_logprobs
+python -m src.bias_policy.infra_check.resample_logprobs
+```
+
 The scripts assume Ollama is available locally and that the configured model can be called through `fire_api_call/src.py`.
 
 Current model constant used by the resampling scripts:
@@ -329,7 +360,7 @@ Near-term:
 
 1. Design and validate a repair/verification mechanism for `GENERATION_FIDELITY_ISSUE` items, tiered by `correct_count` (near-total failure vs. weak-partial vs. borderline/unstable) rather than a single fallback.
 2. Verify that the plurality answer across resamples actually matches ground truth for the borderline/unstable tier before treating it as a voting-repairable case.
-3. Build a de-biasing step (or bias-aware calibration feature) for Tiny Aya Fire's position bias toward option A, since it confounds the 12 `PASS_CONFOUNDED_BY_BIAS` items and likely biases raw MCQ accuracy elsewhere in the pipeline.
+3. Build a de-biasing step (or bias-aware calibration feature) for Tiny Aya Fire's position bias toward option A, since it confounds the 12 `PASS_CONFOUNDED_BY_BIAS` items and likely biases raw MCQ accuracy elsewhere in the pipeline. The temperature-0 logprob check (`src/bias_policy/infra_check`) narrows this to 5 of the 12 items whose "pass" was resample noise, not a genuine model preference — those 5 should be relabeled as bias-driven passes rather than left as ambiguous.
 4. Cleanly separate dataset artifacts from genuine model failures.
 5. Build a policy-label table from Phase 1, Phase 2, and Phase 3 outputs (RETRIEVE / COMPREHENSION_GAP / GENERATION_FIDELITY_ISSUE, tiered).
 6. Add Bengali and BanglaRQA abstention data back into the action-policy framing.
@@ -354,6 +385,7 @@ Known caveats:
 - MCQ letter extraction is intentionally simple and should be stress-tested before larger runs
 - current thresholds are research heuristics, not final policy boundaries
 - Tiny Aya Fire has a confirmed position bias toward option A (45.7% selected vs. 29.5% correct); any pass/fail result on an A-correct item should be treated as potentially confounded, not just Phase 3's `PASS_CONFOUNDED_BY_BIAS` items
+- the temperature-0 logprob check only covers the 12 `PASS_CONFOUNDED_BY_BIAS` items so far — the same deterministic-argmax method has not yet been applied to the 13 `COMPREHENSION_GAP` items or the broader dataset to see how far position bias reaches
 - Phase 3's trivial-baseline / fact-repetition control (meant to establish a fidelity floor independent of task difficulty) was designed but not fully built out — the answer-handed control task became the main focus instead
 
 These caveats are part of the research contribution: LRCal-Agent is explicitly trying to learn when model behavior is unsupported, unstable, or language-conditionally unreliable.
