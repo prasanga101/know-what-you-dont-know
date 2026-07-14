@@ -2,7 +2,7 @@
 
 LRCal-Agent studies whether a low-resource-language LLM system can recognize when it should answer, translate, retrieve evidence, abstain, or escalate instead of answering confidently and incorrectly.
 
-The current project has advanced from setup through a completed Phase 1 no-passage pilot, a Phase 2 passage-retrieval experiment, and a Phase 3 fidelity-control experiment on parallel English/Nepali Belebele multiple-choice questions. Two key findings so far: retrieval behaves very differently by language (adding the correct passage resolves most English failures but only a small minority of Nepali failures), and among the Nepali items retrieval still can't fix, most turn out to be generation-fidelity failures rather than comprehension gaps — the model often can't reliably state the correct answer even when it is handed to it directly.
+The current project has advanced from setup through a completed Phase 1 no-passage pilot, a Phase 2 passage-retrieval experiment, a Phase 3 fidelity-control experiment, and a Phase 4 bias-aware policy formalization pass, on parallel English/Nepali Belebele multiple-choice questions. Key findings so far: retrieval behaves very differently by language (adding the correct passage resolves most English failures but only a small minority of Nepali failures); among the Nepali items retrieval still can't fix, most turn out to be generation-fidelity failures rather than comprehension gaps — the model often can't reliably state the correct answer even when it is handed to it directly; and once position bias is controlled for as strictly as possible (cyclic-permutation debasing), only a third of the remaining ambiguous "passes" hold up as genuine comprehension. Phase 4 formalizes all of this into a concrete `TRANSLATE`/`RETRIEVE`/`REPAIR`/`ABSTAIN` action-policy label per item.
 
 ## Research Question
 
@@ -25,7 +25,7 @@ LRCal-Agent separates the system into two layers:
 | Layer | Role | Status |
 |---|---|---|
 | Layer 1: Calibration signal | Resample the base model many times and measure accuracy, answer agreement, entropy, and failure patterns | Implemented for MCQ pilots |
-| Layer 2: Action policy | Learn which action should be taken from calibration and trajectory features | Research target; current phases are generating labels/evidence |
+| Layer 2: Action policy | Learn which action should be taken from calibration and trajectory features | Fixed-rule hierarchy implemented (`policy_formulation.py`); trained classifier is still a research target |
 
 The important methodological shift from the recent work is that failure is not binary. A wrong answer can come from:
 
@@ -204,6 +204,59 @@ Phase 3 flagged 12 items as `PASS_CONFOUNDED_BY_BIAS` — cases where the model 
 
 **Finding.** At temperature 0 (no sampling noise), the model's true top choice (by logprob) matches the correct letter A on only **7 of 12 items (58.3%)**. The other 5 have a different deterministic argmax (D on 2, and B and C on one each), meaning their earlier temperature-0.7 "pass" was resample noise landing on the biased letter, not a genuine model preference for the correct answer. This further shrinks the trustworthy comprehension-gap count from Phase 3: of the 13 `COMPREHENSION_GAP` + 12 `PASS_CONFOUNDED_BY_BIAS` items previously counted as passes, at most 13 + 7 = 20 look genuinely earned once bias is deterministically controlled for, not 25.
 
+### Cyclic-Permutation Debasing (`bias_policy/cyclic_permutation_debasing`)
+
+Completed.
+
+The temperature-0 logprob check confirms *whether* the model's top pick is the correct letter, but it can't tell whether that pick tracks the answer's **content** or just its **position** — a model anchored on "always guess A" and a model that genuinely knows the answer happens to be A would look identical in a single-ordering check. Cyclic-permutation debasing resolves this by moving the content around and watching whether the model's pick follows it.
+
+- `build_debasing.py` takes the 12 `PASS_CONFOUNDED_BY_BIAS` items (`data/infra_check/ollama_logprob_probe_results.json`), extracts the four option texts out of each prompt, and generates all 4 cyclic rotations (shift 0-3, i.e. `ABCD`/`BCDA`/`CDAB`/`DABC` reassigned back onto letters A-D) with the prompt rebuilt around each rotation and the correct letter re-tracked to its new position. 12 items x 4 shifts = 48 rotated prompts, saved to `data/infra_check/debasic_ollama_log.json`. Every rotation is validated (no lost/duplicated option text, shift-0 equals the original) before anything is written.
+- `resample_debasing_logprobs.py` queries Ollama at temperature 0 for all 48 rotated prompts, extracts A/B/C/D logprobs the same way as the earlier infra_check, and records which option the model's top logprob lands on for each rotation. The same temperature-0 argmax sanity invariant from the earlier infra_check is re-checked on every record. Saved to `data/infra_check/debasic_ollama_logprob_resampling_result.json`.
+- `aggregate_debasing.py` groups the 48 results back by item (4 rows each) and compares the sequence of top-picked options across the 4 rotations against the correct letter's new position each time, producing one verdict per item:
+
+| Verdict | Rule | Meaning |
+|---|---|---|
+| `permutation_stable` | Top pick matches the (moving) correct letter on all 4/4 rotations | Model tracks the answer's content, not its position — genuine comprehension |
+| `position_anchored` | Same letter position picked on >= 3/4 rotations, regardless of content | Model is anchored to a letter slot — pure position bias |
+| `complex_interaction` | Neither of the above | Mixed/inconsistent pattern, not cleanly attributable to either |
+
+**Finding.** Of the 12 `PASS_CONFOUNDED_BY_BIAS` items (`data/infra_check/aggregated_debasing.json`):
+
+| Verdict | Count |
+|---|---:|
+| `permutation_stable` | 4 |
+| `position_anchored` | 2 |
+| `complex_interaction` | 6 |
+
+Only **4 of 12 (33.3%)** items survive the strongest available bias check — the model's pick follows the correct content through every option reordering. The other 8 (66.7%) either show clear position anchoring or an inconsistent pattern that can't be trusted as genuine comprehension. This narrows the trustworthy pass count from Phase 3/infra_check further: of the 12 `PASS_CONFOUNDED_BY_BIAS` items, only these 4 hold up as real, content-tracking correctness once bias is controlled for as strictly as possible with this method.
+
+### Action-Policy Formalization (`bias_policy/action_policy`)
+
+Completed.
+
+`policy_formulation.py` formalizes the actual decision rule the earlier phases were building evidence for: given an item, which of `TRANSLATE` / `RETRIEVE` / `REPAIR` / `ABSTAIN` should the policy take? It joins three prior outputs — `data/passage1/retrieval_comparison.json` (Phase 2), `data/fidelity_control1/phase3_classification.json` (Phase 3), and `data/infra_check/aggregated_debasing.json` (cyclic-permutation debasing) — and applies a strict priority order per item, using an odd-resample majority threshold of `8/15` throughout:
+
+1. `TRANSLATE` — if the English no-passage accuracy already clears `8/15`, the model knows the answer in English; route through it rather than fixing Nepali directly.
+2. `RETRIEVE` — otherwise, if the Nepali with-passage accuracy clears `8/15`, supplying the correct Nepali passage is enough.
+3. `REPAIR` — otherwise (evidence alone doesn't resolve it): trust a consistency-based repair only if the item survived the strongest bias check available — `permutation_stable` in the debasing verdict for the 12 items that went through it, or a confirmed `COMPREHENSION_GAP` classification (Phase 3) for items that didn't need debasing at all.
+4. `ABSTAIN` — everything else: generation-fidelity failures that don't survive repair, and `PASS_CONFOUNDED_BY_BIAS` items whose debasing verdict came back `position_anchored` or `complex_interaction`.
+
+Run first over the 73 clean Phase 3 items alone, no item clears the `RETRIEVE` bar in Nepali at all (0/73) — direct, mechanical confirmation of the Phase 2/3 finding that Nepali retrieval essentially never resolves a failing item. The script then folds in the Nepali rows from Phase 2 that were never part of the "still failing" set, so the final label set covers every Nepali item that had a clear outcome:
+
+- all 15 `ne` rows Phase 2 already classified `RETRIEVE` are carried through as `RETRIEVE` directly;
+- the 15 `ne` `PARTIAL_IMPROVEMENT` rows are re-checked against the same `8/15` bar: 3 clear the with-passage threshold and become `RETRIEVE`, 1 more clears the English no-passage threshold instead and becomes `TRANSLATE`, and the remaining 11 clear neither and are left without an assigned action (a known gap — see Notes On Reliability).
+
+Final label counts (`data/policy_formulation/policy_Action_determination.json`, 92 labeled items):
+
+| Action | Count | Share |
+|---|---:|---:|
+| `ABSTAIN` | 53 | 57.6% |
+| `RETRIEVE` | 18 | 19.6% |
+| `REPAIR` | 17 | 18.5% |
+| `TRANSLATE` | 4 | 4.3% |
+
+This is the first end-to-end, non-`ANSWER` action label set the project has produced — the 92 labeled items exclude the 58 Nepali items that were never failing in the first place (implicitly `ANSWER`), the 5 items excluded in Phase 3 as `AMBIGUOUS_ITEM`/`CORRUPTED_EVIDENCE`, and the 11 unresolved `PARTIAL_IMPROVEMENT` items noted above.
+
 ## Main Research Finding So Far
 
 The passage experiment shows a major asymmetry:
@@ -256,6 +309,12 @@ LRCal-Agent/
         test_ollama_logprobs.py    # Pull PASS_CONFOUNDED_BY_BIAS items from Phase 3
         build_logprobs.py          # Dedupe + build logprob-probe prompts
         resample_logprobs.py       # Query Ollama logprobs at temperature 0, verify bias
+      cyclic_permutation_debasing/
+        build_debasing.py          # Rotate options 4 ways per item, rebuild prompts
+        resample_debasing_logprobs.py # Query Ollama logprobs per rotation, track content vs. position
+        aggregate_debasing.py      # Aggregate the 4 rotations per item into a stability verdict
+      action_policy/
+        policy_formulation.py      # Formalize TRANSLATE/RETRIEVE/REPAIR/ABSTAIN action labels
     tests/
       distribution_comparision.md  # Current experiment summary and interpretation
   data/
@@ -263,11 +322,12 @@ LRCal-Agent/
     pilot1/                        # Phase 1 samples, trials, buckets, review sample
     passage1/                      # Phase 2 passage samples and retrieval comparison
     fidelity_control1/             # Phase 3 control prompts, resamples, classification
-    infra_check/                   # Logprob-based bias verification for PASS_CONFOUNDED_BY_BIAS
+    infra_check/                   # Logprob-based bias verification + cyclic-permutation debasing
+    policy_formulation/            # Final formalized action labels
     loader/                        # Dataset loading helpers
     data_cleaner/                  # Dataset-specific cleaners
   results/                         # Early resampling sanity checks
-  phases/                          # Phase diagrams
+  phases/                          # Phase diagrams (phase1-4.png)
   gen_fidelity_correct_count_hist.png # Phase 3 correct_count histogram
 ```
 
@@ -293,6 +353,10 @@ LRCal-Agent/
 | `data/infra_check/ollama_logprobs.json` | 12 `PASS_CONFOUNDED_BY_BIAS` items pulled from Phase 3 |
 | `data/infra_check/resample_ollama_logprobs.json` | Deduped, single-letter-answer logprob-probe prompts (12 unique) |
 | `data/infra_check/ollama_logprob_probe_results.json` | Temperature-0 logprob probe results, deterministic bias check |
+| `data/infra_check/debasic_ollama_log.json` | 48 rotated prompts (12 `PASS_CONFOUNDED_BY_BIAS` items x 4 cyclic option-orderings) |
+| `data/infra_check/debasic_ollama_logprob_resampling_result.json` | Temperature-0 logprob results for all 48 rotated prompts |
+| `data/infra_check/aggregated_debasing.json` | Per-item content-vs-position stability verdict across the 4 rotations (12 items) |
+| `data/policy_formulation/policy_Action_determination.json` | Final formalized `TRANSLATE`/`RETRIEVE`/`REPAIR`/`ABSTAIN` action label per item (92 items) |
 | `gen_fidelity_correct_count_hist.png` | Distribution of `correct_count` within generation-fidelity failures |
 | `src/tests/distribution_comparision.md` | Human-readable results summary and interpretation |
 
@@ -338,6 +402,20 @@ python -m src.bias_policy.infra_check.build_logprobs
 python -m src.bias_policy.infra_check.resample_logprobs
 ```
 
+### Cyclic-Permutation Debasing
+
+```bash
+python -m src.bias_policy.cyclic_permutation_debasing.build_debasing
+python -m src.bias_policy.cyclic_permutation_debasing.resample_debasing_logprobs
+python -m src.bias_policy.cyclic_permutation_debasing.aggregate_debasing
+```
+
+### Action-Policy Formalization
+
+```bash
+python -m src.bias_policy.action_policy.policy_formulation
+```
+
 The scripts assume Ollama is available locally and that the configured model can be called through `fire_api_call/src.py`.
 
 Current model constant used by the resampling scripts:
@@ -360,18 +438,18 @@ Near-term:
 
 1. Design and validate a repair/verification mechanism for `GENERATION_FIDELITY_ISSUE` items, tiered by `correct_count` (near-total failure vs. weak-partial vs. borderline/unstable) rather than a single fallback.
 2. Verify that the plurality answer across resamples actually matches ground truth for the borderline/unstable tier before treating it as a voting-repairable case.
-3. Build a de-biasing step (or bias-aware calibration feature) for Tiny Aya Fire's position bias toward option A, since it confounds the 12 `PASS_CONFOUNDED_BY_BIAS` items and likely biases raw MCQ accuracy elsewhere in the pipeline. The temperature-0 logprob check (`src/bias_policy/infra_check`) narrows this to 5 of the 12 items whose "pass" was resample noise, not a genuine model preference — those 5 should be relabeled as bias-driven passes rather than left as ambiguous.
-4. Cleanly separate dataset artifacts from genuine model failures.
-5. Build a policy-label table from Phase 1, Phase 2, and Phase 3 outputs (RETRIEVE / COMPREHENSION_GAP / GENERATION_FIDELITY_ISSUE, tiered).
+3. Extend cyclic-permutation debasing beyond the 12 `PASS_CONFOUNDED_BY_BIAS` items — the 13 `COMPREHENSION_GAP` items are currently trusted as `REPAIR`-eligible on classification alone, without the same content-vs-position check applied to the debased items.
+4. Resolve the 11 Nepali `PARTIAL_IMPROVEMENT` items that cleared neither the with-passage nor no-passage `8/15` bar in `policy_formulation.py` — they currently receive no action label at all.
+5. Cleanly separate dataset artifacts from genuine model failures.
 6. Add Bengali and BanglaRQA abstention data back into the action-policy framing.
+7. Build the trajectory-metric features (per-item entropy, agreement rate, token-probability variance) and train the Layer 2 classifier against the `policy_formulation.py` action hierarchy as labels (Phase 4D/E).
 
 Later:
 
 1. Integrate translation as an actual tool path.
 2. Compare English vs Hindi as recovery targets for Nepali `TRANSLATE` candidates.
 3. Evaluate other candidate Layer 2 models with bias-conditioned comparisons (Qwen2.5-1.5B-instruct was ruled out — no genuine complementary capability, just a stronger position bias toward D).
-4. Train the Layer 2 policy module using calibration features, language, retrieval status, and action labels.
-5. Evaluate whether the trained policy outperforms fixed threshold rules.
+4. Evaluate whether the trained policy outperforms the fixed threshold rules in `policy_formulation.py`.
 
 ## Notes On Reliability
 
@@ -385,7 +463,9 @@ Known caveats:
 - MCQ letter extraction is intentionally simple and should be stress-tested before larger runs
 - current thresholds are research heuristics, not final policy boundaries
 - Tiny Aya Fire has a confirmed position bias toward option A (45.7% selected vs. 29.5% correct); any pass/fail result on an A-correct item should be treated as potentially confounded, not just Phase 3's `PASS_CONFOUNDED_BY_BIAS` items
-- the temperature-0 logprob check only covers the 12 `PASS_CONFOUNDED_BY_BIAS` items so far — the same deterministic-argmax method has not yet been applied to the 13 `COMPREHENSION_GAP` items or the broader dataset to see how far position bias reaches
+- the temperature-0 logprob check and the cyclic-permutation debasing built on top of it only cover the 12 `PASS_CONFOUNDED_BY_BIAS` items so far — the same content-vs-position check has not yet been applied to the 13 `COMPREHENSION_GAP` items or the broader dataset to see how far position bias reaches
 - Phase 3's trivial-baseline / fact-repetition control (meant to establish a fidelity floor independent of task difficulty) was designed but not fully built out — the answer-handed control task became the main focus instead
+- `policy_formulation.py`'s `REPAIR` action trusts `COMPREHENSION_GAP` classification at face value for the 61 items that never went through cyclic-permutation debasing (only the 12 `PASS_CONFOUNDED_BY_BIAS` items did) — those `REPAIR` labels have not had the same content-vs-position check applied as the 4 `permutation_stable` items
+- 11 Nepali `PARTIAL_IMPROVEMENT` items clear neither the with-passage nor the no-passage `8/15` bar in `policy_formulation.py` and are left without an action label in `data/policy_formulation/policy_Action_determination.json` — a known gap, not an omission of the underlying data
 
 These caveats are part of the research contribution: LRCal-Agent is explicitly trying to learn when model behavior is unsupported, unstable, or language-conditionally unreliable.
