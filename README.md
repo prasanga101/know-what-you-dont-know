@@ -2,7 +2,7 @@
 
 LRCal-Agent studies whether a low-resource-language LLM system can recognize when it should answer, translate, retrieve evidence, abstain, or escalate instead of answering confidently and incorrectly.
 
-The current project has advanced from setup through a completed Phase 1 no-passage pilot, a Phase 2 passage-retrieval experiment, a Phase 3 fidelity-control experiment, and a Phase 4 bias-aware policy formalization pass, on parallel English/Nepali Belebele multiple-choice questions. Key findings so far: retrieval behaves very differently by language (adding the correct passage resolves most English failures but only a small minority of Nepali failures); among the Nepali items retrieval still can't fix, most turn out to be generation-fidelity failures rather than comprehension gaps — the model often can't reliably state the correct answer even when it is handed to it directly; and once position bias is controlled for as strictly as possible (cyclic-permutation debasing), only a third of the remaining ambiguous "passes" hold up as genuine comprehension. Phase 4 formalizes all of this into a concrete `TRANSLATE`/`RETRIEVE`/`REPAIR`/`ABSTAIN` action-policy label per item.
+The current project has advanced from setup through a completed Phase 1 no-passage pilot, a Phase 2 passage-retrieval experiment, a Phase 3 fidelity-control experiment, and a completed Phase 4 bias-aware policy formalization and Layer 2 groundwork pass, on parallel English/Nepali Belebele multiple-choice questions. Key findings so far: retrieval behaves very differently by language (adding the correct passage resolves most English failures but only a small minority of Nepali failures); among the Nepali items retrieval still can't fix, most turn out to be generation-fidelity failures rather than comprehension gaps — the model often can't reliably state the correct answer even when it is handed to it directly; and once position bias is controlled for as strictly as possible (cyclic-permutation debasing), only a third of the remaining ambiguous "passes" hold up as genuine comprehension. Phase 4 formalizes all of this into a concrete `TRANSLATE`/`RETRIEVE`/`REPAIR`/`ABSTAIN` action-policy label per item, builds trajectory-metric features from that label set, and trains a first Layer 2 classifier against it — finding that Layer-1 confidence/self-consistency signals carry a small but real signal above a dummy baseline, but are not yet sufficient on their own to reliably drive the 4-way action decision.
 
 ## Research Question
 
@@ -25,7 +25,7 @@ LRCal-Agent separates the system into two layers:
 | Layer | Role | Status |
 |---|---|---|
 | Layer 1: Calibration signal | Resample the base model many times and measure accuracy, answer agreement, entropy, and failure patterns | Implemented for MCQ pilots |
-| Layer 2: Action policy | Learn which action should be taken from calibration and trajectory features | Fixed-rule hierarchy implemented (`policy_formulation.py`); trained classifier is still a research target |
+| Layer 2: Action policy | Learn which action should be taken from calibration and trajectory features | Fixed-rule hierarchy implemented (`policy_formulation.py`); first trained classifier built and validated (`train_agent/main.py`) — macro-F1 ~0.28 vs. a 0.18 dummy floor, a real but modest signal, not yet a reliable 4-way decision-maker |
 
 The important methodological shift from the recent work is that failure is not binary. A wrong answer can come from:
 
@@ -257,6 +257,68 @@ Final label counts (`data/policy_formulation/policy_Action_determination.json`, 
 
 This is the first end-to-end, non-`ANSWER` action label set the project has produced — the 92 labeled items exclude the 58 Nepali items that were never failing in the first place (implicitly `ANSWER`), the 5 items excluded in Phase 3 as `AMBIGUOUS_ITEM`/`CORRUPTED_EVIDENCE`, and the 11 unresolved `PARTIAL_IMPROVEMENT` items noted above.
 
+### Trajectory-Metric Features (`bias_policy/trajectory_features`)
+
+Completed.
+
+Before training a Layer 2 classifier, each of the 92 labeled items needed a feature vector. `trajectory_freature.py` builds one per item, reusing data already on hand plus one new deterministic Ollama call per item on the plain Nepali baseline prompt (the same neutralized-decoding setup validated in `infra_check`):
+
+- **Resample-based features** (zero new model calls) — Shannon entropy and agreement-rate (mode frequency) over each item's 15 baseline Nepali resamples from `data/pilot1/resampling_results.json`, plus the per-option resample distribution, its top-2 margin, and the invalid-response rate.
+- **Logprob-based features** (one deterministic call per item, 92 total) — a normalized A/B/C/D probability distribution from the first-token logprobs, its entropy, top-2 margin, and the population variance across the four probabilities (`token_probability_variance`).
+- **Cross-signal features** — whether the resample-mode answer and the logprob-argmax answer agree (`resample_logprob_top_match`), and the Jensen–Shannon divergence between the two distributions.
+
+All 92 items ran clean (checkpointed, resumable via `trajectory_feature.checkpoint.json`) — no crashes, no missing-letter extraction failures, 92 unique item keys, results independently re-verified against the printed group-by-action summary.
+
+**Finding.** None of the three headline features (entropy, agreement-rate, token-probability variance) separate the four actions well on their own. Eta-squared (share of variance explained by the action label):
+
+| Feature | Eta-squared |
+|---|---:|
+| `entropy` | 4.45% |
+| `agreement_rate` | 3.68% |
+| `token_probability_variance` | 1.07% |
+
+`entropy` and `agreement_rate` are near-redundant (correlation −0.967) — they capture almost the same thing. `token_probability_variance` is only weakly related to either (−0.529 with entropy, +0.449 with agreement) and adds the *least* separating power of the three, not the most — its `TRANSLATE`-bucket mean is inflated by a single outlier. `REPAIR` trends toward higher entropy / lower agreement than the other actions, but all four classes overlap heavily on every feature.
+
+**Conclusion, correctly scoped.** This is a real negative result, not a failed step: Layer-1 confidence/self-consistency signals alone tell you *whether* the model is confident, not *what kind* of corrective action a failure needs. That is the argument for Layer 2 as a distinct, multi-signal system rather than a confidence threshold — whether a trained classifier can actually close that gap is what the next step (E) tests.
+
+**Caution carried into the classifier step.** Candidate signals like retrieval-improvement, EN/NE recovery, fidelity classification, and the permutation verdict already fed into building the action labels themselves (Phase 4C). Using raw versions of them as classifier *inputs* is not strictly circular — C used hard thresholds while the raw values carry more nuance — but it is a real leakage risk that has to be reported explicitly if used, not folded in silently.
+
+Full output: `data/policy_formulation/trajectory_feature.json` (92 records, 17 features each).
+
+### Layer 2 Classifier (`bias_policy/train_agent`)
+
+Completed.
+
+`train_agent/main.py` trains a decision-tree classifier against C's action labels using D's features, and validates it four different ways to stress-test the result before trusting it, addressing the leakage risk flagged above head-on:
+
+- a **dummy baseline** (always predict the majority action, `ABSTAIN`), for a real floor to compare against instead of raw accuracy (`ABSTAIN` alone is 58% of the data);
+- a **3-feature tree** (`entropy`, `agreement_rate`, `token_probability_variance` — the D headline features only) under `StratifiedGroupKFold(k=4)` outer validation, grouped by source link (8 of 92 links appear twice and could otherwise leak across train/test), with a nested `GridSearchCV` inner loop pruning over `max_depth`, `min_samples_leaf`, `class_weight`, and `ccp_alpha`, selected only on outer-train data;
+- a **16-feature tree** using the full D feature set (raw resample/logprob probability vectors, top-2 margins, entropy, cross-source top-match flag, Jensen–Shannon divergence) under the same grouped/nested-pruned methodology — all sourced from A/B/D's own data, not from C's label-building thresholds, so this version carries no leakage risk.
+
+Out-of-fold results (pooled predictions across all outer folds):
+
+| Model | Accuracy | Balanced accuracy | Macro F1 |
+|---|---:|---:|---:|
+| Dummy (always `ABSTAIN`) | 0.576 | 0.250 | 0.183 |
+| Decision tree, 3 features, grouped + nested-pruned | 0.554 | 0.289 | 0.279 |
+| Decision tree, 16 features, grouped + nested-pruned | 0.467 | 0.258 | 0.244 |
+
+An earlier, unrestricted 3-feature tree (plain `StratifiedKFold`, no grouping, no pruning) was also run as a sanity check and scored a similar macro-F1 (0.290) despite training-set memorization (training macro-F1 = 1.00, depth 11, 47 leaves fit to ~92 rows) — the close agreement with the properly grouped/pruned run (0.279) is itself informative: it shows the headline result isn't an artifact of overfitting or fold leakage, not that the naive version should be trusted on its own. Only the grouped/nested-pruned versions are kept in the shipped script.
+
+Along the way, a real `scikit-learn` API issue surfaced and was fixed: `make_scorer(f1_score, average="macro", ...)` inherits `f1_score`'s own default `pos_label=1` and validates it against the fitted estimator's string class labels before `average` is ever applied, raising a `ValueError`; fixed by passing a plain scorer callable instead of `make_scorer`.
+
+**Finding.** Macro-F1 stays in a narrow 0.24–0.29 band across every methodology tried, only modestly above the 0.183 dummy floor. Going from 3 to 16 features made results *worse*, not better (0.279 → 0.244) — most likely because splitting 92 items across outer and inner folds leaves only ~40–50 rows to learn 16 dimensions from, not enough data for the extra features to pay off. `REPAIR` and `TRANSLATE` remain essentially unresolved in every version (`TRANSLATE`: 0/4 correct in nearly every run; `REPAIR` F1 never exceeds 0.21).
+
+**Conclusion, correctly scoped.** Layer-1 confidence and self-consistency signals carry a small but real signal above chance (confirmed against a proper dummy baseline), but are not sufficient to reliably drive the 4-way corrective-action decision, particularly for the rarer classes (`REPAIR`, `TRANSLATE`). This is a negative-but-legitimate finding, consistent across multiple independent methodologies — not a modeling failure. It motivates either substantially more labeled data for the minority actions, or a fundamentally different signal source (e.g. an "evidence present but unusable" feature, not yet built), rather than further tuning of this feature family.
+
+Full script: `src/bias_policy/train_agent/main.py`.
+
+### Phase 4 Aggregate Report
+
+Completed.
+
+`train_agent/aggregate_report.py` pulls B's debiasing verdict counts, C's action-label counts, D's eta-squared numbers, and E's full accuracy/macro-F1 table into one report — re-running E's evaluation live (importing directly from `main.py`) rather than hardcoding numbers, so the report can't silently drift out of sync with the model code. Output: `data/policy_formulation/phase4_aggregate_report.md`.
+
 ## Main Research Finding So Far
 
 The passage experiment shows a major asymmetry:
@@ -274,6 +336,8 @@ That means the action policy may need to distinguish:
 - `ABSTAIN` or `ESCALATE`: evidence present, comprehension gap confirmed, model still cannot use it reliably
 - `TRANSLATE`: English recovers where Nepali does not
 - a repair/verification path for generation-fidelity failures (distinct from `ABSTAIN`): near-total failures likely need a fallback action, weak-partial cases need evidence-grounded verification, and only borderline/unstable cases are candidates for consistency-based repair
+
+Phase 4's D and E steps close the loop on that policy design: once the `TRANSLATE`/`RETRIEVE`/`REPAIR`/`ABSTAIN` labels exist (C), Layer-1 confidence/self-consistency features derived from the same resample and logprob data used everywhere else in the project (D) explain only a small share of the variance between actions, and a trained classifier built on those features tops out at macro-F1 ~0.28 against a 0.18 dummy floor (E) — a real signal, but not close to reliable, especially for the minority `REPAIR`/`TRANSLATE` classes. That is direct, quantified evidence for the project's core claim: confidence alone cannot tell you *which* corrective action a low-resource-language failure needs, only that something is wrong. Layer 2 needs either more labeled data or additional, qualitatively different signal sources beyond resample/logprob confidence.
 
 ## Project Layout
 
@@ -315,6 +379,11 @@ LRCal-Agent/
         aggregate_debasing.py      # Aggregate the 4 rotations per item into a stability verdict
       action_policy/
         policy_formulation.py      # Formalize TRANSLATE/RETRIEVE/REPAIR/ABSTAIN action labels
+      trajectory_features/
+        trajectory_freature.py     # Build entropy/agreement/logprob feature vectors per item
+      train_agent/
+        main.py                    # Train + validate the Layer 2 decision-tree classifier
+        aggregate_report.py        # Aggregate B/C/D/E results into one Phase 4 report
     tests/
       distribution_comparision.md  # Current experiment summary and interpretation
   data/
@@ -323,7 +392,7 @@ LRCal-Agent/
     passage1/                      # Phase 2 passage samples and retrieval comparison
     fidelity_control1/             # Phase 3 control prompts, resamples, classification
     infra_check/                   # Logprob-based bias verification + cyclic-permutation debasing
-    policy_formulation/            # Final formalized action labels
+    policy_formulation/            # Action labels, trajectory features, Phase 4 aggregate report
     loader/                        # Dataset loading helpers
     data_cleaner/                  # Dataset-specific cleaners
   results/                         # Early resampling sanity checks
@@ -357,6 +426,8 @@ LRCal-Agent/
 | `data/infra_check/debasic_ollama_logprob_resampling_result.json` | Temperature-0 logprob results for all 48 rotated prompts |
 | `data/infra_check/aggregated_debasing.json` | Per-item content-vs-position stability verdict across the 4 rotations (12 items) |
 | `data/policy_formulation/policy_Action_determination.json` | Final formalized `TRANSLATE`/`RETRIEVE`/`REPAIR`/`ABSTAIN` action label per item (92 items) |
+| `data/policy_formulation/trajectory_feature.json` | 17-feature trajectory vector (entropy, agreement, logprob-derived) per item (92 records) |
+| `data/policy_formulation/phase4_aggregate_report.md` | Aggregated Phase 4 B/C/D/E results, regenerated live from the model code |
 | `gen_fidelity_correct_count_hist.png` | Distribution of `correct_count` within generation-fidelity failures |
 | `src/tests/distribution_comparision.md` | Human-readable results summary and interpretation |
 
@@ -416,6 +487,19 @@ python -m src.bias_policy.cyclic_permutation_debasing.aggregate_debasing
 python -m src.bias_policy.action_policy.policy_formulation
 ```
 
+### Trajectory-Metric Features
+
+```bash
+python -m src.bias_policy.trajectory_features.trajectory_freature
+```
+
+### Layer 2 Classifier + Aggregate Report
+
+```bash
+python -m src.bias_policy.train_agent.main
+python -m src.bias_policy.train_agent.aggregate_report
+```
+
 The scripts assume Ollama is available locally and that the configured model can be called through `fire_api_call/src.py`.
 
 Current model constant used by the resampling scripts:
@@ -442,14 +526,15 @@ Near-term:
 4. Resolve the 11 Nepali `PARTIAL_IMPROVEMENT` items that cleared neither the with-passage nor no-passage `8/15` bar in `policy_formulation.py` — they currently receive no action label at all.
 5. Cleanly separate dataset artifacts from genuine model failures.
 6. Add Bengali and BanglaRQA abstention data back into the action-policy framing.
-7. Build the trajectory-metric features (per-item entropy, agreement rate, token-probability variance) and train the Layer 2 classifier against the `policy_formulation.py` action hierarchy as labels (Phase 4D/E).
+7. Write the Phase 4 prose summary (12 confounded items resolved, finalized action hierarchy, honest Layer 2 performance ceiling) using `phase4_aggregate_report.md` as the source of truth.
+8. Find a signal source beyond resample/logprob confidence for the Layer 2 classifier — Phase 4E showed confidence/self-consistency features alone plateau at macro-F1 ~0.28, particularly weak on `REPAIR`/`TRANSLATE`. Candidates: an "evidence present but unusable" feature, or substantially more labeled data for the minority classes.
 
 Later:
 
 1. Integrate translation as an actual tool path.
 2. Compare English vs Hindi as recovery targets for Nepali `TRANSLATE` candidates.
 3. Evaluate other candidate Layer 2 models with bias-conditioned comparisons (Qwen2.5-1.5B-instruct was ruled out — no genuine complementary capability, just a stronger position bias toward D).
-4. Evaluate whether the trained policy outperforms the fixed threshold rules in `policy_formulation.py`.
+4. Evaluate whether the trained policy (once it clears a reasonable performance bar) outperforms the fixed threshold rules in `policy_formulation.py` in an end-to-end setting.
 
 ## Notes On Reliability
 
@@ -467,5 +552,8 @@ Known caveats:
 - Phase 3's trivial-baseline / fact-repetition control (meant to establish a fidelity floor independent of task difficulty) was designed but not fully built out — the answer-handed control task became the main focus instead
 - `policy_formulation.py`'s `REPAIR` action trusts `COMPREHENSION_GAP` classification at face value for the 61 items that never went through cyclic-permutation debasing (only the 12 `PASS_CONFOUNDED_BY_BIAS` items did) — those `REPAIR` labels have not had the same content-vs-position check applied as the 4 `permutation_stable` items
 - 11 Nepali `PARTIAL_IMPROVEMENT` items clear neither the with-passage nor the no-passage `8/15` bar in `policy_formulation.py` and are left without an action label in `data/policy_formulation/policy_Action_determination.json` — a known gap, not an omission of the underlying data
+- the Phase 4E classifier trains on only 92 labeled items, with the rarest class (`TRANSLATE`) at just 4 examples; the reported macro-F1 (~0.28) should be read as a directional signal, not a precise estimate — the confidence interval around it is wide at this sample size
+- candidate signals that fed into building the C action labels (retrieval-improvement, EN/NE recovery, fidelity classification, permutation verdict) are related to — but distinct in construction from — the D features actually used as classifier inputs; the 3- and 16-feature runs avoid using C's thresholded outputs directly, but this boundary should be checked again before adding any new feature derived from C's inputs
+- the Phase 4 aggregate report (`phase4_aggregate_report.md`) re-runs E live from `main.py`, so its numbers track the current script, but the "unrestricted, ungrouped" tree variant referenced in the Phase 4 progress notes as a sanity check is not preserved as a runnable path in the shipped script — only the dummy baseline and the two grouped/nested-pruned variants are
 
 These caveats are part of the research contribution: LRCal-Agent is explicitly trying to learn when model behavior is unsupported, unstable, or language-conditionally unreliable.
